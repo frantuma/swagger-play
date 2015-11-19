@@ -26,10 +26,13 @@ import javax.xml.bind.annotation._
 
 import java.io.StringWriter
 
-import com.wordnik.swagger.core.util.JsonSerializer
-import com.wordnik.swagger.model.{ApiListing, ApiListingReference, ResourceListing}
-import com.wordnik.swagger.core.filter.SpecFilter
-import com.wordnik.swagger.config.{ConfigFactory, FilterFactory}
+import io.swagger.util.Json
+import io.swagger.models.Swagger
+import io.swagger.core.filter.SpecFilter
+import io.swagger.config.{ConfigFactory, FilterFactory}
+
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 object ErrorResponse {
   val ERROR = 1
@@ -103,7 +106,7 @@ class ApiHelpController extends SwaggerBaseApiController {
 }
 
 class SwaggerBaseApiController extends Controller {
-  protected def jaxbContext = JAXBContext.newInstance(classOf[String], classOf[ResourceListing])
+  //protected def jaxbContext = JAXBContext.newInstance(classOf[String], classOf[ResourceListing])
 
   protected def returnXml(request: Request[_]) = request.path.contains(".xml")
 
@@ -116,42 +119,32 @@ class SwaggerBaseApiController extends Controller {
     Logger("swagger").debug("ApiHelpInventory.getRootResources")
     val docRoot = ""
     val queryParams = (for((key, value) <- requestHeader.queryString) yield {
-      (key, value.toList)
+      (key, value.toList.asJava)
     }).toMap
+    //val aaa = queryParams.asJava
     val cookies = (for(cookie <- requestHeader.cookies) yield {
       (cookie.name, cookie.value)
     }).toMap
     val headers = (for((key, value) <- requestHeader.headers.toMap) yield {
-      (key, value.toList)
+      (key, value.toList.asJava)
     }).toMap
 
     val f = new SpecFilter
-    val l: Option[Map[String, com.wordnik.swagger.model.ApiListing]] = ApiListingCache.listing(docRoot)
+    //f.filter(arg0, arg1, arg2, arg3, arg4)
+    val l: Option[Swagger] = ApiListingCache.listing(docRoot)
 
-    val specs: List[com.wordnik.swagger.model.ApiListing] = l match {
-      case Some(m) => m.map(_._2).toList
-      case _ => List()
+    //val specs = l.
+    val specs: Swagger = l match {
+      case Some(m) => m
+      case _ => new Swagger()
     }
-    // val specs = l.getOrElse(Map: Map[String, com.wordnik.swagger.model.ApiListing] ()).map(_._2).toList
-    val listings = (for (spec <- specs)
-      yield f.filter(spec, FilterFactory.filter, queryParams, cookies, headers)
-    ).filter(m => m.apis.size > 0)
+    // val specs = l.getOrElse(Map: Map[String, io.swagger.model.ApiListing] ()).map(_._2).toList
+    val listings = f.filter(specs, FilterFactory.getFilter, queryParams.asJava, cookies, headers)
+    //val listings = (for (spec <- specs)
+    //  yield f.filter(specs, FilterFactory.getFilter, queryParams.asJava, cookies, headers)
+    //).filter(m => m.apis.size > 0)
 
-    val references = (for (listing <- listings) yield {
-      ApiListingReference(listing.resourcePath, listing.description)
-    }).toList
-
-    references.foreach {
-      ref =>
-        Logger("swagger").debug("reference: %s".format(ref.toString))
-    }
-    ResourceListing(
-      ConfigFactory.config.getApiVersion,
-      ConfigFactory.config.getSwaggerVersion,
-      references,
-      ConfigFactory.config.authorizations,
-      ConfigFactory.config.info
-    )
+    specs
   }
 
   /**
@@ -161,21 +154,17 @@ class SwaggerBaseApiController extends Controller {
     Logger("swagger").debug("ApiHelpInventory.getResource(%s)".format(resourceName))
     val docRoot = ""
     val f = new SpecFilter
-    val queryParams = requestHeader.queryString.map {case (key, value) => key -> value.toList}
-    val cookies = requestHeader.cookies.map {cookie => cookie.name -> cookie.value}.toMap
-    val headers = requestHeader.headers.toMap.map {case (key, value) => key -> value.toList}
+    val queryParams = requestHeader.queryString.map {case (key, value) => key -> value.toList.asJava}
+    val cookies = requestHeader.cookies.map {cookie => cookie.name -> cookie.value}.toMap.asJava
+    val headers = requestHeader.headers.toMap.map {case (key, value) => key -> value.toList.asJava}
     val pathPart = resourceName
 
-    val listings: List[ApiListing] = ApiListingCache.listing(docRoot).map(specs => {
-      (for (spec <- specs.values) yield {
-        f.filter(spec, FilterFactory.filter, queryParams, cookies, headers)
-      }).filter(m => m.resourcePath == pathPart)
-    }).get.toList
-
-    listings.size match {
-      case 1 => Option(listings.head)
-      case _ => None
-    }
+    val l: Option[Swagger] = ApiListingCache.listing(docRoot)
+    val specs: Swagger = l match {
+      case Some(m) => m
+      case _ => new Swagger()
+    }    
+    f.filter(specs, FilterFactory.getFilter, queryParams.asJava, cookies, headers)
   }
 
   def toXmlString(data: Any): String = {
@@ -183,7 +172,7 @@ class SwaggerBaseApiController extends Controller {
       data.asInstanceOf[String]
     } else {
       val stringWriter = new StringWriter()
-      jaxbContext.createMarshaller().marshal(data, stringWriter)
+      //jaxbContext.createMarshaller().marshal(data, stringWriter)
       stringWriter.toString
     }
   }
@@ -205,7 +194,8 @@ class SwaggerBaseApiController extends Controller {
     if (data.getClass.equals(classOf[String])) {
       data.asInstanceOf[String]
     } else {
-      JsonSerializer.asJson(data.asInstanceOf[AnyRef])
+      Json.prettyPrint(data.asInstanceOf[AnyRef])      
+      Json.pretty(data.asInstanceOf[AnyRef])
     }
   }
 

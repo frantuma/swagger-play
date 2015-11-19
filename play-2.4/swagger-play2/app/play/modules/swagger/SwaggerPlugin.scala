@@ -18,18 +18,20 @@ package play.modules.swagger
 
 import java.net.URL
 import javax.inject.Inject
-
-import com.wordnik.swagger.config.{FilterFactory, ScannerFactory, ConfigFactory}
-import com.wordnik.swagger.core.SwaggerContext
-import com.wordnik.swagger.core.filter.SwaggerSpecFilter
-import com.wordnik.swagger.model.ApiInfo
-import com.wordnik.swagger.reader.ClassReaders
+import io.swagger.config.{FilterFactory, ScannerFactory, ConfigFactory}
+import play.modules.swagger.util.SwaggerContext
+import io.swagger.core.filter.SwaggerSpecFilter
+import io.swagger.model.ApiInfo
 import play.api.inject.ApplicationLifecycle
 import play.api.{Logger, Application}
 import play.api.routing.Router
 import scala.concurrent.ExecutionContext.Implicits.global
-
 import scala.concurrent.Future
+import io.swagger.jaxrs.ext.SwaggerExtensions
+import io.swagger.jaxrs.ext.SwaggerExtension
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+import play.modules.swagger.routes.{Route=>PlayRoute,Parameter => PlayParameter}
 
 trait SwaggerPlugin
 
@@ -80,18 +82,38 @@ class SwaggerPluginImpl @Inject()(lifecycle: ApplicationLifecycle, router: Route
     case Some(value)=> value
   }
 
-  ConfigFactory.config.setApiInfo(new ApiInfo(title, description, termsOfServiceUrl, contact, license, licenseUrl));
-
   SwaggerContext.registerClassLoader(app.classloader)
-  ConfigFactory.config.setApiVersion(apiVersion)
-  ConfigFactory.config.setBasePath(basePath)
-  ScannerFactory.setScanner(new PlayApiScanner(Option(router)))
-  ClassReaders.reader = Some(new PlayApiReader(Option(router)))
 
+  // TODO use config
+  var scanner = new PlayApiScanner(Option(router))
+  scanner.description = description
+  scanner.basePath = basePath
+  scanner.contact = contact
+  // TODO host?
+  //scanner.host = host
+  scanner.version = apiVersion
+  scanner.title = title
+  scanner.termsOfServiceUrl = termsOfServiceUrl
+  scanner.license = license
+  scanner.licenseUrl = licenseUrl
+  ScannerFactory.setScanner(scanner)
+    
+  val routes ={
+      play.modules.swagger.routes.RoutesFileParser.parse(app.classloader,"routes","").right.get.collect {
+        case (prefix, route: PlayRoute) => (prefix,route)
+      }
+    }.toMap
+  
+  val routeCache = new RouteCache(routes)
+  RouteCacheFactory.setRouteCache(routeCache)
+  val ext: SwaggerExtension = new PlaySwaggerExtension()
+  SwaggerExtensions.setExtensions(List(ext).asJava);
+  
   app.configuration.getString("swagger.filter") match {
     case Some(e) if (e != "") => {
       try {
-        FilterFactory.filter = SwaggerContext.loadClass(e).newInstance.asInstanceOf[SwaggerSpecFilter]
+        //TODO handle
+        //FilterFactory.filter = SwaggerContext.loadClass(e).newInstance.asInstanceOf[SwaggerSpecFilter]
         Logger("swagger").info("Setting swagger.filter to %s".format(e))
       }
       catch {

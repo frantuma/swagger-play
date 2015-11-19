@@ -1,8 +1,8 @@
 package test.testdata
 
 
-import com.wordnik.swagger.annotations._
-import com.wordnik.swagger.core.util.JsonSerializer
+import io.swagger.annotations._
+import io.swagger.util.Json
 
 import java.io.IOException
 
@@ -30,10 +30,16 @@ import scala.concurrent.Future
   )
 )
 object DogController extends Controller {
+
+  @ApiOperation(value="addDog0")
+  def add0(id:String) = Action {
+    request => Ok("test case")
+  }
+
   @ApiOperation(value = "addDog1",
     httpMethod = "PUT")
   @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "dog", value = "Dog object to add", required = true, dataType = "Dog", paramType = "body")))
+    new ApiImplicitParam(name = "dog", value = "Dog object to add", required = true, dataType = "test.testdata.Dog", paramType = "body")))
   def add1 = Action {
     request => Ok("test case")
   }
@@ -53,14 +59,14 @@ object DogController extends Controller {
     position = 2)
   @ApiResponses(Array())
   @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "dog", value = "Dog object to add", required = true, dataType = "Dog", paramType = "body")))
+    new ApiImplicitParam(name = "dog", value = "Dog object to add", required = true, dataType = "test.testdata.Dog", paramType = "body")))
   def add2 = Action {
     request => Ok("test case")
   }
 
   @ApiOperation(value = "Add a new Dog",
     notes = "Adds a dogs nicely",
-    httpMethod = "PUT",
+    //httpMethod = "PUT",
     authorizations = Array(new Authorization(value="oauth2",
       scopes = Array(
         new AuthorizationScope(scope = "vet", description = "vet access"),
@@ -75,7 +81,7 @@ object DogController extends Controller {
     new ApiResponse(code = 405, message = "Invalid input"),
     new ApiResponse(code = 666, message = "Big Problem")))
   @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "dog", value = "Dog object to add", required = true, dataType = "Dog", paramType = "body")))
+    new ApiImplicitParam(name = "dog", value = "Dog object to add", required = true, dataType = "test.testdata.Dog", paramType = "body")))
   def add3 = Action {
     request => Ok("test case")
   }
@@ -86,7 +92,7 @@ object DogController extends Controller {
   @ApiResponses(Array(
     new ApiResponse(code = 405, message = "Invalid input")))
   @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "dog", value = "Dog object to update", required = true, dataType = "Dog", paramType = "body")))
+    new ApiImplicitParam(name = "dog", value = "Dog object to update", required = true, dataType = "test.testdata.Dog", paramType = "body")))
   def update = Action {
     request => Ok("test case")
   }
@@ -190,5 +196,3 @@ object DogController extends Controller {
     request => Ok("test case")
   }
 }
-
-case class Dog(id: Long, name: String)

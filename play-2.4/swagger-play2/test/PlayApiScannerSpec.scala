@@ -1,13 +1,12 @@
 import play.modules.swagger._
-
 import org.specs2.mutable._
 import org.specs2.mock.Mockito
-
 import test.testdata.DogController
-import com.wordnik.swagger.core.{SwaggerSpec, SwaggerContext}
-import com.wordnik.swagger.config.SwaggerConfig
-
+import io.swagger.config.SwaggerConfig
 import org.mockito.Mockito._
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+import play.modules.swagger.util.SwaggerContext
 
 class PlayApiScannerSpec extends Specification with Mockito {
 
@@ -25,7 +24,8 @@ class PlayApiScannerSpec extends Specification with Mockito {
   "PlayApiScanner" should {
     "identify correct API classes based on router and API annotations" in {
       val classes = new PlayApiScanner(Some(mockRoutes)).classes()
-      classes.length must beEqualTo(2)
+      
+      classes.toList.length must beEqualTo(2)
       classes.find(clazz => clazz == SwaggerContext.loadClass("test.testdata.DogController")).nonEmpty must beTrue
       classes.find(clazz => clazz == SwaggerContext.loadClass("test.testdata.CatController")).nonEmpty must beTrue
     }

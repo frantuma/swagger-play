@@ -1,7 +1,7 @@
 package test.testdata
 
-import com.wordnik.swagger.annotations._
-import com.wordnik.swagger.core.util.JsonSerializer
+import io.swagger.annotations._
+import io.swagger.util.Json
 
 import java.io.IOException
 
@@ -21,7 +21,7 @@ class CatController extends Controller {
       consumes = "",
       protocols = "")
     @ApiImplicitParams(Array(
-      new ApiImplicitParam(name = "cat", value = "Cat object to add", required = true, dataType = "Cat", paramType = "body")))
+      new ApiImplicitParam(name = "cat", value = "Cat object to add", required = true, dataType = "test.testdata.Cat", paramType = "body")))
     def add1 = Action {
       request => Ok("test case")
     }
@@ -32,7 +32,7 @@ class CatController extends Controller {
     @ApiResponses(Array(
       new ApiResponse(code = 405, message = "Invalid input")))
     @ApiImplicitParams(Array(
-      new ApiImplicitParam(name = "cat", value = "Cat object to update", required = true, dataType = "Cat", paramType = "body")))
+      new ApiImplicitParam(name = "cat", value = "Cat object to update", required = true, dataType = "test.testdata.Cat", paramType = "body")))
     def update = Action {
       request => Ok("test case")
     }
