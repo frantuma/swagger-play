@@ -26,10 +26,7 @@ import io.swagger.models.properties.ArrayProperty;
 import io.swagger.models.properties.MapProperty;
 import io.swagger.models.properties.Property;
 import io.swagger.models.properties.RefProperty;
-import io.swagger.util.BaseReaderUtils;
-import io.swagger.util.ParameterProcessor;
-import io.swagger.util.PathUtils;
-import io.swagger.util.ReflectionUtils;
+import io.swagger.util.*;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;

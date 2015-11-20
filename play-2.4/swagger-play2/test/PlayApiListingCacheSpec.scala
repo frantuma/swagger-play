@@ -80,10 +80,12 @@ PUT /api/dog/:id test.testdata.DogController.add0(id:String)
       val docRoot = ""
       val listings = ApiListingCache.listing(docRoot)
 
-      //Logger.debug ("swagger: " + toJsonString(listings.get))
+      Logger.debug ("swagger: " + toJsonString(listings.get))
       listings must beSome
+      listings.get.getBasePath must beEqualTo(basePath);
       // TODO complete test
       /*
+
       val listingMap: Map[String, ApiListing] = listings.get
 
       listingMap.toList.length must beEqualTo(2)
