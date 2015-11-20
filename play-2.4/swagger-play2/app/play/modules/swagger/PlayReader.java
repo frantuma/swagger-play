@@ -193,13 +193,11 @@ public class PlayReader extends Reader{
                     if (isIgnored(operationPath)) {
                         continue;
                     }
-                    Logger.error ("operationPath " + operationPath);
                     final ApiOperation apiOperation = ReflectionUtils.getAnnotation(method, ApiOperation.class);
                     // TODO here it uses Extension chain mechanism from swagger-jaxrs, move here
                     String httpMethod = extractOperationMethod(apiOperation, method, SwaggerExtensions.chain());
                     Operation operation = null;
                     if(apiOperation != null || getConfig().isScanAllResources() || httpMethod != null || methodPath != null) {
-                    	Logger.error ("parsing " + operationPath + " - method " + method.getName());
                         operation = parseMethod(cls, method, globalParameters);
                     }
                     if (operation == null) {
@@ -257,7 +255,6 @@ public class PlayReader extends Reader{
 
                     // can't continue without a valid http method
                     httpMethod = httpMethod == null ? parentMethod : httpMethod;
-                	Logger.error ("httpMethod " + httpMethod);
                     if (httpMethod != null) {
                         if (apiOperation != null) {
                             boolean hasExplicitTag = false;
@@ -295,14 +292,11 @@ public class PlayReader extends Reader{
                                     operation.security(security);
                                 }
                             }
-                        	Logger.error ("operation path INS " + operationPath);
                             Path path = getSwagger().getPath(operationPath);
                             if (path == null) {
                                 path = new Path();
-                                Logger.error ("operation path INSERT " + operationPath);
                                 getSwagger().path(operationPath, path);
                             }
-                            Logger.error ("httpMethod INS " + httpMethod);
                             path.set(httpMethod, operation);
                             try {
                             	readImplicitParameters(method, operation);

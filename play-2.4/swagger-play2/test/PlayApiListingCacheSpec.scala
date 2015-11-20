@@ -51,6 +51,8 @@ PUT /api/dog/:id test.testdata.DogController.add0(id:String)
     }
   } : _*)
 
+  
+  
   val apiVersion = "test1"
   val basePath = "http://aa.bb.com"
 
