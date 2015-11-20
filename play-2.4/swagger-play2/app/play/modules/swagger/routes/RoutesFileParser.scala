@@ -31,7 +31,7 @@ object RoutesFileParser {
           case route: Route =>
             val newparts = StaticPart(prefix) +: route.path.parts
             val newPath = route.path.copy(parts = newparts)
-            Logger.error(newPath.toString())
+            Logger.debug(newPath.toString())
             Right(List((prefix,route.copy(path = newPath))))
           case include:Include => // load include route
             Logger.debug(s"include router: ${include.router} prefix: ${include.prefix.toString()}")
@@ -50,12 +50,8 @@ object RoutesFileParser {
       case Left(error) => Left(error)
     }
   }
-
-  def parse(routesContent: String): Either[Seq[RoutesCompilationError], List[Rule]] = {
-    parseContent(routesContent, new File("nofile"))
-  }
   
-  def parseit(routesContent: String, prefix: String): Either[Seq[RoutesCompilationError], List[(String,Rule)]] = {
+  def parse(routesContent: String, prefix: String): Either[Seq[RoutesCompilationError], List[(String,Rule)]] = {
     parseContent(routesContent, new File("nofile")) match {
         case Right(rules) =>
         val eithers: List[Either[Seq[RoutesCompilationError], List[(String,Rule)]]] = rules.map {
@@ -263,23 +259,23 @@ private[routes] class RoutesFileParser extends JavaTokenParsers {
    def httpVerb: Parser[HttpVerb] = namedError("GET" | "POST" | "PUT" | "PATCH" | "HEAD" | "DELETE" | "OPTIONS", "HTTP Verb expected") ^^ {
      case v => HttpVerb(v)
    }
-
+   
    def singleComponentPathPart: Parser[DynamicPart] = (":" ~> identifier) ^^ {
      case name => DynamicPart(name, """[^/]+""", encode = true)
    }
-
+     
    def multipleComponentsPathPart: Parser[DynamicPart] = ("*" ~> identifier) ^^ {
      case name => DynamicPart(name, """.+""", encode = false)
    }
-
+     
    def regexComponentPathPart: Parser[DynamicPart] = "$" ~> identifier ~ ("<" ~> (not(">") ~> """[^\s]""".r +) <~ ">" ^^ { case c => c.mkString }) ^^ {
      case name ~ regex => DynamicPart(name, regex, encode = false)
    }
-
+   
    def staticPathPart: Parser[StaticPart] = (not(":") ~> not("*") ~> not("$") ~> """[^\s]""".r +) ^^ {
      case chars => StaticPart(chars.mkString)
    }
-
+     
    def path: Parser[PathPattern] = "/" ~ ((positioned(singleComponentPathPart) | positioned(multipleComponentsPathPart) | positioned(regexComponentPathPart) | staticPathPart) *) ^^ {
      case _ ~ parts => PathPattern(parts)
    }

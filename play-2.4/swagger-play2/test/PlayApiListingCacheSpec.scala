@@ -27,7 +27,7 @@ class PlayApiListingCacheSpec extends Specification with Mockito {
   mockRoutes.documentation returns routesDocumentation
 
   val routesList = {
-    play.modules.swagger.routes.RoutesFileParser.parseit("""
+    play.modules.swagger.routes.RoutesFileParser.parse("""
 GET /api/dog test.testdata.DogController.list
 PUT /api/dog test.testdata.DogController.add1
 GET /api/cat @test.testdata.CatController.list
@@ -51,8 +51,6 @@ PUT /api/dog/:id test.testdata.DogController.add0(id:String)
     }
   } : _*)
 
-  
-  
   val apiVersion = "test1"
   val basePath = "http://aa.bb.com"
 
@@ -82,7 +80,7 @@ PUT /api/dog/:id test.testdata.DogController.add0(id:String)
       val docRoot = ""
       val listings = ApiListingCache.listing(docRoot)
 
-      Logger.debug ("swagger: " + toJsonString(listings.get))
+      //Logger.debug ("swagger: " + toJsonString(listings.get))
       listings must beSome
       // TODO complete test
       /*

@@ -16,15 +16,7 @@ import io.swagger.jaxrs.config.ReaderConfig;
 import io.swagger.jaxrs.ext.SwaggerExtension;
 import io.swagger.jaxrs.ext.SwaggerExtensions;
 import io.swagger.jaxrs.utils.ReaderUtils;
-import io.swagger.models.Model;
-import io.swagger.models.Operation;
-import io.swagger.models.Path;
-import io.swagger.models.Response;
-import io.swagger.models.Scheme;
-import io.swagger.models.SecurityRequirement;
-import io.swagger.models.SecurityScope;
-import io.swagger.models.Swagger;
-import io.swagger.models.Tag;
+import io.swagger.models.*;
 import io.swagger.models.parameters.FormParameter;
 import io.swagger.models.parameters.HeaderParameter;
 import io.swagger.models.parameters.Parameter;
@@ -59,10 +51,11 @@ import javax.ws.rs.Produces;
 import org.apache.commons.lang3.StringUtils;
 
 import play.Logger;
-import play.modules.swagger.routes.Route;
+import play.modules.swagger.routes.*;
 
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+
 import scala.Option;
 
 public class PlayReader extends Reader{
@@ -180,7 +173,7 @@ public class PlayReader extends Reader{
                 }
                 Route route = routes.get(fullMethodName);
 
-                String operationPath = route.path().toString().replaceFirst(config.basePath(), "");
+                String operationPath = getPathFromRoute(route.path(), config.basePath());
                 // TODO do we read jax-rs annotation?
                 Map<String, String> regexMap = new HashMap<String, String>();
                 
@@ -308,7 +301,7 @@ public class PlayReader extends Reader{
                 }
             }
         }
-
+        
         return getSwagger();
     }
 	
@@ -321,6 +314,28 @@ public class PlayReader extends Reader{
             }
         }
         return result;
+    }
+    
+    String getPathFromRoute(PathPattern pathPattern, String basePath){
+
+        StringBuilder sb = new StringBuilder();
+    	scala.collection.Iterator iter = pathPattern.parts().iterator();
+        while (iter.hasNext()) {
+          PathPart part = (PathPart)iter.next();
+            if(part instanceof StaticPart){
+                sb.append(((StaticPart) part).value());
+            } else if (part instanceof DynamicPart){
+                // TODO use model converter?
+                sb.append("{");
+                sb.append(((DynamicPart) part).name());
+                sb.append("}");
+            } else {
+                sb.append(((StaticPart) part).value());
+            }
+        }
+        if (!sb.toString().startsWith("/")) sb.insert(0, "/");
+        String operationPath = sb.toString().replaceFirst(basePath, "");
+        return operationPath;
     }
     
     String getPath(javax.ws.rs.Path classLevelPath, javax.ws.rs.Path methodLevelPath, String parentPath) {

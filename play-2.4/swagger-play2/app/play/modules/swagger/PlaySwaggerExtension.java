@@ -28,7 +28,12 @@ public class PlaySwaggerExtension extends DefaultParameterExtension {
 			//router.documentation();
 			Route routeEntry = routes.get(getFullMethodName(method.getDeclaringClass(), method));
 			if (routeEntry != null){
-				httpMethod = routeEntry.call().method();
+				try{
+					httpMethod = routeEntry.verb().toString().toLowerCase();
+				} catch (Exception e){
+					Logger.error("http method not found for method: " + method.getName(), e);
+				}
+
 			}
 		}
 		return httpMethod;
