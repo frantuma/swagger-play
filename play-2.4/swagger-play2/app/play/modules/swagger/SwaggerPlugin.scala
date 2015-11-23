@@ -109,8 +109,8 @@ class SwaggerPluginImpl @Inject()(lifecycle: ApplicationLifecycle, router: Route
       }
     }.toMap
   
-  val routeCache = new RouteCache(routes)
-  RouteCacheFactory.setRouteCache(routeCache)
+  val route = new RouteWrapper(routes)
+  RouteFactory.setRoute(route)
   val ext: SwaggerExtension = new PlaySwaggerExtension()
   SwaggerExtensions.setExtensions(List(ext).asJava);
   

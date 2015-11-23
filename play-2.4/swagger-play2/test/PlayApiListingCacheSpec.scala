@@ -71,8 +71,8 @@ PUT /api/dog/:id test.testdata.DogController.add0(id:String)
 
   var scanner = new PlayApiScanner(Some(mockRoutes))
   ScannerFactory.setScanner(scanner)
-  val routeCache = new RouteCache(routesRules)
-  RouteCacheFactory.setRouteCache(routeCache)
+  val route = new RouteWrapper(routesRules)
+  RouteFactory.setRoute(route)
   val ext: SwaggerExtension = new PlaySwaggerExtension()
   SwaggerExtensions.setExtensions(List(ext).asJava);
 

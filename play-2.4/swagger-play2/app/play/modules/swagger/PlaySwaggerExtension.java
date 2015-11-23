@@ -14,10 +14,10 @@ import io.swagger.jaxrs.ext.SwaggerExtension;
 
 public class PlaySwaggerExtension extends DefaultParameterExtension {
 	
-	RouteCache routes;
+	RouteWrapper routes;
 
 	public PlaySwaggerExtension(){
-		this.routes = RouteCacheFactory.getRouteCache();
+		this.routes = RouteFactory.getRoute();
 	}
 
 	@Override

@@ -9,7 +9,6 @@ import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Authorization;
 import io.swagger.annotations.AuthorizationScope;
 import io.swagger.annotations.ResponseHeader;
-import io.swagger.config.ScannerFactory;
 import io.swagger.converter.ModelConverters;
 import io.swagger.jaxrs.Reader;
 import io.swagger.jaxrs.config.ReaderConfig;
@@ -53,8 +52,6 @@ import play.modules.swagger.routes.*;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
-import scala.Option;
-
 public class PlayReader extends Reader{
 	
     private static final String SUCCESSFUL_OPERATION = "successful operation";
@@ -75,7 +72,7 @@ public class PlayReader extends Reader{
 	
     private Swagger read(Class<?> cls, String parentPath, String parentMethod, boolean readHidden, String[] parentConsumes, String[] parentProduces, Map<String, Tag> parentTags, List<Parameter> parentParameters, Set<Class<?>> scannedResources) {
     	
-    	RouteCache routes = RouteCacheFactory.getRouteCache();
+    	RouteWrapper routes = RouteFactory.getRoute();
     	
         PlaySwaggerConfig config = PlayConfigFactory.getConfig();
     	
@@ -161,7 +158,7 @@ public class PlayReader extends Reader{
                 }                
                 javax.ws.rs.Path methodPath = ReflectionUtils.getAnnotation(method, javax.ws.rs.Path.class);
 
-                // complete name as stored in routeCache
+                // complete name as stored in route
                 String fullMethodName = getFullMethodName(cls, method);
                 
                 if (!routes.exists(fullMethodName)){

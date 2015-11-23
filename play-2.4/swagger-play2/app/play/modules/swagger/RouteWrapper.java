@@ -5,11 +5,11 @@ import java.util.Map;
 import play.modules.swagger.routes.Route;
 
 
-public class RouteCache{
+public class RouteWrapper {
 		
 	private Map<String,Route>  router;
 	
-	public RouteCache(Map<String,Route> router){
+	public RouteWrapper(Map<String,Route> router){
 		this.router = router;
 	}
 	

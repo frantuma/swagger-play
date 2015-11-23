@@ -74,7 +74,7 @@ class PlayApiScanner(router: Option[Router]) extends Scanner with SwaggerConfig 
     Logger("swagger").info("ControllerScanner - looking for controllers with API annotation")
 
     
-    var routes = RouteCacheFactory.getRouteCache().getAll().toList
+    var routes = RouteFactory.getRoute().getAll().toList
         
     // get controller names from application routes
     val controllers =         routes.map{ case (_,route) =>
