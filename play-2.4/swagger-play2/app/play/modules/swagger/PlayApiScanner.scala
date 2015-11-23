@@ -23,59 +23,47 @@ import play.modules.swagger.routes.{Route=>PlayRoute,Parameter => PlayParameter}
  */
 class PlayApiScanner(router: Option[Router]) extends Scanner with SwaggerConfig {
   
-  // TODO keep config elsewhere
-    var schemes : Array[String] = _
-    var title : String = _
-    var version : String = _
-    var description : String = _
-    var termsOfServiceUrl : String = _
-    var contact : String = _
-    var license : String = _
-    var licenseUrl : String = _
-    var filterClass : String = _
-    //var info : Info = _
-    var host : String = _
-    var basePath : String = _
 
-    
     private def updateInfoFromConfig(swagger: Swagger) : Swagger = {
 
         var info = new Info()
+        val playSwaggerConfig = PlayConfigFactory.getConfig
 
-        if (StringUtils.isNotBlank(description)) {
-            info.description(description);
+        if (StringUtils.isNotBlank(playSwaggerConfig.description)) {
+            info.description(playSwaggerConfig.description);
         }
 
-        if (StringUtils.isNotBlank(title)) {
-            info.title(title);
+        if (StringUtils.isNotBlank(playSwaggerConfig.title)) {
+            info.title(playSwaggerConfig.title);
         }
 
-        if (StringUtils.isNotBlank(version)) {
-            info.version(version);
+        if (StringUtils.isNotBlank(playSwaggerConfig.version)) {
+            info.version(playSwaggerConfig.version);
         }
 
-        if (StringUtils.isNotBlank(termsOfServiceUrl)) {
-            info.termsOfService(termsOfServiceUrl);
+        if (StringUtils.isNotBlank(playSwaggerConfig.termsOfServiceUrl)) {
+            info.termsOfService(playSwaggerConfig.termsOfServiceUrl);
         }
 
-        if (contact != null) {
+        if (playSwaggerConfig.contact != null) {
             info.contact(new Contact()
-                    .name(contact));
+                    .name(playSwaggerConfig.contact));
         }
-        if (license != null && licenseUrl != null) {
+        if (playSwaggerConfig.license != null && playSwaggerConfig.licenseUrl != null) {
             info.license(new License()
-                    .name(license)
-                    .url(licenseUrl));
+                    .name(playSwaggerConfig.license)
+                    .url(playSwaggerConfig.licenseUrl));
         }
         swagger.info(info)
     }
   override def configure(swagger: Swagger) : Swagger = {
-    if (schemes != null) {
-      for (s <- schemes) swagger.scheme(Scheme.forValue(s))
+    val playSwaggerConfig = PlayConfigFactory.getConfig
+    if (playSwaggerConfig.schemes != null) {
+      for (s <- playSwaggerConfig.schemes) swagger.scheme(Scheme.forValue(s))
     }
     updateInfoFromConfig(swagger)
-    swagger.host(host)    
-    swagger.basePath(basePath);
+    swagger.host(playSwaggerConfig.host)
+    swagger.basePath(playSwaggerConfig.basePath);
       
   }
   override def getFilterClass() : String = {

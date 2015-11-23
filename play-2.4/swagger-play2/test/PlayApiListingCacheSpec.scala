@@ -54,19 +54,22 @@ PUT /api/dog/:id test.testdata.DogController.add0(id:String)
   val apiVersion = "test1"
   val basePath = "http://aa.bb.com"
 
-  // TODO use config
-  var scanner = new PlayApiScanner(Some(mockRoutes))
-  scanner.description = "description"
-  scanner.basePath = basePath
-  scanner.contact = "contact"
-  //scanner.host = host
-  scanner.version = "beta"
-  scanner.title = "title"
-  scanner.termsOfServiceUrl = "http://termsOfServiceUrl"
-  scanner.license = "license"
-  scanner.licenseUrl = "http://licenseUrl"
-  
+  var swaggerConfig = new PlaySwaggerConfig()
 
+  swaggerConfig setDescription "description"
+  swaggerConfig setBasePath basePath
+  swaggerConfig setContact "contact"
+  // TODO host?
+  //scanner.host = host
+  swaggerConfig setVersion "beta"
+  swaggerConfig setTitle "title"
+  swaggerConfig setTermsOfServiceUrl "http://termsOfServiceUrl"
+  swaggerConfig setLicense "license"
+  swaggerConfig setLicenseUrl "http://licenseUrl"
+
+  PlayConfigFactory.setConfig(swaggerConfig)
+
+  var scanner = new PlayApiScanner(Some(mockRoutes))
   ScannerFactory.setScanner(scanner)
   val routeCache = new RouteCache(routesRules)
   RouteCacheFactory.setRouteCache(routeCache)

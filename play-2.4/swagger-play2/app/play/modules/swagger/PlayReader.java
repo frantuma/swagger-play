@@ -77,8 +77,7 @@ public class PlayReader extends Reader{
     	
     	RouteCache routes = RouteCacheFactory.getRouteCache();
     	
-    	// TODO naming, keep config elswhere
-    	PlayApiScanner config = (PlayApiScanner)ScannerFactory.getScanner();
+        PlaySwaggerConfig config = PlayConfigFactory.getConfig();
     	
         Api api = (Api) cls.getAnnotation(Api.class);
         Map<String, SecurityScope> globalScopes = new HashMap<String, SecurityScope>();
@@ -170,7 +169,7 @@ public class PlayReader extends Reader{
                 }
                 Route route = routes.get(fullMethodName);
 
-                String operationPath = getPathFromRoute(route.path(), config.basePath());
+                String operationPath = getPathFromRoute(route.path(), config.basePath);
                 // TODO do we read jax-rs annotation?
                 Map<String, String> regexMap = new HashMap<String, String>();
                 

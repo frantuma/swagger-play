@@ -86,18 +86,23 @@ class SwaggerPluginImpl @Inject()(lifecycle: ApplicationLifecycle, router: Route
 
   // TODO use config
   var scanner = new PlayApiScanner(Option(router))
-  scanner.description = description
-  scanner.basePath = basePath
-  scanner.contact = contact
-  // TODO host?
-  //scanner.host = host
-  scanner.version = apiVersion
-  scanner.title = title
-  scanner.termsOfServiceUrl = termsOfServiceUrl
-  scanner.license = license
-  scanner.licenseUrl = licenseUrl
   ScannerFactory.setScanner(scanner)
-    
+
+  var swaggerConfig = new PlaySwaggerConfig()
+
+  swaggerConfig.description = description
+  swaggerConfig.basePath = basePath
+  swaggerConfig.contact = contact
+  // TODO host?
+  //swaggerConfig.host = host
+  swaggerConfig.version = apiVersion
+  swaggerConfig.title = title
+  swaggerConfig.termsOfServiceUrl = termsOfServiceUrl
+  swaggerConfig.license = license
+  swaggerConfig.licenseUrl = licenseUrl
+
+  PlayConfigFactory.setConfig(swaggerConfig)
+
   val routes ={
       play.modules.swagger.routes.RoutesFileParser.parse(app.classloader,"routes","").right.get.collect {
         case (prefix, route: PlayRoute) => (prefix,route)
