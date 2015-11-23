@@ -19,8 +19,9 @@ package play.modules.swagger
 import java.net.URL
 import javax.inject.Inject
 import io.swagger.config.{FilterFactory, ScannerFactory, ConfigFactory}
+import io.swagger.util.Json
 import play.modules.swagger.util.SwaggerContext
-import io.swagger.core.filter.SwaggerSpecFilter
+import io.swagger.core.filter.{SpecFilter, SwaggerSpecFilter}
 import io.swagger.model.ApiInfo
 import play.api.inject.ApplicationLifecycle
 import play.api.{Logger, Application}
@@ -84,7 +85,6 @@ class SwaggerPluginImpl @Inject()(lifecycle: ApplicationLifecycle, router: Route
 
   SwaggerContext.registerClassLoader(app.classloader)
 
-  // TODO use config
   var scanner = new PlayApiScanner(Option(router))
   ScannerFactory.setScanner(scanner)
 
@@ -93,8 +93,6 @@ class SwaggerPluginImpl @Inject()(lifecycle: ApplicationLifecycle, router: Route
   swaggerConfig.description = description
   swaggerConfig.basePath = basePath
   swaggerConfig.contact = contact
-  // TODO host?
-  //swaggerConfig.host = host
   swaggerConfig.version = apiVersion
   swaggerConfig.title = title
   swaggerConfig.termsOfServiceUrl = termsOfServiceUrl
@@ -103,23 +101,39 @@ class SwaggerPluginImpl @Inject()(lifecycle: ApplicationLifecycle, router: Route
 
   PlayConfigFactory.setConfig(swaggerConfig)
 
+  /*
   val routes ={
       play.modules.swagger.routes.RoutesFileParser.parse(app.classloader,"routes","").right.get.collect {
         case (prefix, route: PlayRoute) => (prefix,route)
       }
     }.toMap
-  
-  val route = new RouteWrapper(routes)
+*/
+  val routes ={
+    play.modules.swagger.routes.RoutesFileParser.parse(app.classloader,"routes","").right.get.collect {
+      case (prefix, route: PlayRoute) => {
+        val routeName = s"${route.call.packageName}.${route.call.controller}$$.${route.call.method}"
+        (prefix, route)
+      }
+    }
+  }
+
+  val routesRules = Map(routes map
+    { route =>
+    {
+      val routeName = s"${route._2.call.packageName}.${route._2.call.controller}$$.${route._2.call.method}"
+      (routeName -> route._2)
+    }
+    } : _*)
+
+  val route = new RouteWrapper(routesRules)
   RouteFactory.setRoute(route)
   val ext: SwaggerExtension = new PlaySwaggerExtension()
   SwaggerExtensions.setExtensions(List(ext).asJava);
-  
   app.configuration.getString("swagger.filter") match {
     case Some(e) if (e != "") => {
       try {
-        //TODO handle
-        //FilterFactory.filter = SwaggerContext.loadClass(e).newInstance.asInstanceOf[SwaggerSpecFilter]
-        Logger("swagger").info("Setting swagger.filter to %s".format(e))
+        FilterFactory setFilter SwaggerContext.loadClass(e).newInstance.asInstanceOf[SwaggerSpecFilter]
+        logger.debug("Setting swagger.filter to %s".format(e))
       }
       catch {
         case ex: Exception => Logger("swagger").error("Failed to load filter " + e, ex)

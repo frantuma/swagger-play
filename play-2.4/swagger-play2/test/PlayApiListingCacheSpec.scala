@@ -59,8 +59,7 @@ PUT /api/dog/:id test.testdata.DogController.add0(id:String)
   swaggerConfig setDescription "description"
   swaggerConfig setBasePath basePath
   swaggerConfig setContact "contact"
-  // TODO host?
-  //scanner.host = host
+  swaggerConfig setHost "127.0.0.1"
   swaggerConfig setVersion "beta"
   swaggerConfig setTitle "title"
   swaggerConfig setTermsOfServiceUrl "http://termsOfServiceUrl"

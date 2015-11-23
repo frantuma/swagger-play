@@ -11,7 +11,7 @@ object ApiListingCache {
   def listing(docRoot: String): Option[Swagger] = {
     cache.orElse{
       Logger("swagger").debug("Loading API metadata")
-      
+
       val scanner = ScannerFactory.getScanner()
       val classes = scanner.classes()
       classes.foreach{ clazz =>
@@ -19,8 +19,8 @@ object ApiListingCache {
       }
       val reader = new PlayReader(null)
       var swagger = reader.read(classes)
-      
-      scanner match {        
+
+      scanner match {
         case config: SwaggerConfig => {
           swagger = config.configure(swagger)
         }
@@ -28,9 +28,9 @@ object ApiListingCache {
           // no config, do nothing
         }
       }
-      
+
       cache = Some(swagger)
       cache
-    }    
+    }
   }
 }

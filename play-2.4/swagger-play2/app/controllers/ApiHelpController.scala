@@ -138,13 +138,14 @@ class SwaggerBaseApiController extends Controller {
       case Some(m) => m
       case _ => new Swagger()
     }
-    // val specs = l.getOrElse(Map: Map[String, io.swagger.model.ApiListing] ()).map(_._2).toList
-    val listings = f.filter(specs, FilterFactory.getFilter, queryParams.asJava, cookies, headers)
-    //val listings = (for (spec <- specs)
-    //  yield f.filter(specs, FilterFactory.getFilter, queryParams.asJava, cookies, headers)
-    //).filter(m => m.apis.size > 0)
 
-    specs
+    val hasFilter = Option(FilterFactory.getFilter)
+    hasFilter match {
+      case Some(filter) => f.filter(specs, FilterFactory.getFilter, queryParams.asJava, cookies, headers)
+      case None => specs
+    }
+
+
   }
 
   /**
@@ -163,8 +164,13 @@ class SwaggerBaseApiController extends Controller {
     val specs: Swagger = l match {
       case Some(m) => m
       case _ => new Swagger()
-    }    
-    f.filter(specs, FilterFactory.getFilter, queryParams.asJava, cookies, headers)
+    }
+    val hasFilter = Option(FilterFactory.getFilter)
+    hasFilter match {
+      case Some(filter) => f.filter(specs, FilterFactory.getFilter, queryParams.asJava, cookies, headers)
+      case None => specs
+    }
+
   }
 
   def toXmlString(data: Any): String = {
@@ -194,7 +200,7 @@ class SwaggerBaseApiController extends Controller {
     if (data.getClass.equals(classOf[String])) {
       data.asInstanceOf[String]
     } else {
-      Json.prettyPrint(data.asInstanceOf[AnyRef])      
+      //Json.prettyPrint(data.asInstanceOf[AnyRef])
       Json.pretty(data.asInstanceOf[AnyRef])
     }
   }

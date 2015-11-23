@@ -28,7 +28,7 @@ publishMavenStyle := true
 pomIncludeRepository := { x => false }
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 organization := "io.swagger"
-pomExtra :=
+pomExtra := {
   <url>http://swagger.io</url>
   <licenses>
     <license>
@@ -62,8 +62,7 @@ pomExtra :=
       <name>Ben McCann</name>
       <url>http://www.benmccann.com/</url>
     </developer>
-  </developers>;
+  </developers>
+}
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
-
-EclipseKeys.preTasks := Seq(compile in Compile)
