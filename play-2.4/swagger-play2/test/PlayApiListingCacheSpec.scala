@@ -81,11 +81,15 @@ PUT /api/dog/:id test.testdata.DogController.add0(id:String)
     "load all API specs" in {
 
       val docRoot = ""
-      val listings = ApiListingCache.listing(docRoot)
+      val swagger = ApiListingCache.listing(docRoot)
 
-      Logger.debug ("swagger: " + toJsonString(listings.get))
-      listings must beSome
-      listings.get.getBasePath must beEqualTo(basePath);
+      Logger.debug ("swagger: " + toJsonString(swagger.get))
+      swagger must beSome
+      swagger.get.getBasePath must beEqualTo(basePath)
+      swagger.get.getPaths.size must beEqualTo(3)
+      swagger.get.getDefinitions.size must beEqualTo(3)
+      val catsApiListing = swagger.get.getPaths().get("/api/cat")
+      catsApiListing.getOperations.size must beEqualTo(2)
       // TODO complete test
       /*
 
