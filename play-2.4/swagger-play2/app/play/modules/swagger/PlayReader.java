@@ -118,12 +118,12 @@ public class PlayReader extends Reader {
             }
 
             if (!api.produces().isEmpty()) {
-                produces = new String[]{api.produces()};
+                produces = toArray(api.produces());
             } else if (cls.getAnnotation(Produces.class) != null) {
                 produces = ReaderUtils.splitContentValues(cls.getAnnotation(Produces.class).value());
             }
             if (!api.consumes().isEmpty()) {
-                consumes = new String[]{api.consumes()};
+                consumes =  toArray(api.consumes());
             } else if (cls.getAnnotation(Consumes.class) != null) {
                 consumes = ReaderUtils.splitContentValues(cls.getAnnotation(Consumes.class).value());
             }
@@ -197,7 +197,7 @@ public class PlayReader extends Reader {
                     String httpMethod = extractOperationMethod(apiOperation, method, SwaggerExtensions.chain());
                     Operation operation = null;
                     if (apiOperation != null || getConfig().isScanAllResources() || httpMethod != null || methodPath != null) {
-                        operation = parseMethod(cls, method, globalParameters);
+                        operation = parseMethod(cls, method, globalParameters, route);
                     }
                     if (operation == null) {
                         continue;
@@ -327,9 +327,11 @@ public class PlayReader extends Reader {
                 sb.append(((StaticPart) part).value());
             }
         }
-        if (!sb.toString().startsWith("/")) sb.insert(0, "/");
-        String operationPath = sb.toString().replaceFirst(basePath, "");
-        return operationPath;
+        StringBuilder operationPath = new StringBuilder();
+        if (basePath.startsWith("/")) basePath = basePath.substring(1);
+        operationPath.append(sb.toString().replaceFirst(basePath, ""));
+        if (!operationPath.toString().startsWith("/")) operationPath.insert(0, "/");
+        return operationPath.toString();
     }
 
     String getPath(javax.ws.rs.Path classLevelPath, javax.ws.rs.Path methodLevelPath, String parentPath) {
@@ -404,7 +406,7 @@ public class PlayReader extends Reader {
                 Arrays.<Annotation>asList(param));
     }
 
-    private Operation parseMethod(Class<?> cls, Method method, List<Parameter> globalParameters) {
+    private Operation parseMethod(Class<?> cls, Method method, List<Parameter> globalParameters, Route route) {
         Operation operation = new Operation();
 
         ApiOperation apiOperation = ReflectionUtils.getAnnotation(method, ApiOperation.class);
@@ -459,10 +461,10 @@ public class PlayReader extends Reader {
                 }
             }
             if (apiOperation.consumes() != null && !apiOperation.consumes().isEmpty()) {
-                operation.consumes(apiOperation.consumes());
+                operation.consumes(Arrays.asList(toArray(apiOperation.consumes())));
             }
             if (apiOperation.produces() != null && !apiOperation.produces().isEmpty()) {
-                operation.produces(apiOperation.produces());
+                operation.produces(Arrays.asList(toArray(apiOperation.produces())));
             }
         }
 
@@ -546,7 +548,7 @@ public class PlayReader extends Reader {
         Annotation[][] paramAnnotations = method.getParameterAnnotations();
         for (int i = 0; i < genericParameterTypes.length; i++) {
             final Type type = TypeFactory.defaultInstance().constructType(genericParameterTypes[i], cls);
-            List<Parameter> parameters = getParameters(type, Arrays.asList(paramAnnotations[i]));
+            List<Parameter> parameters = getParameters(type, Arrays.asList(paramAnnotations[i]), i, route);
 
             for (Parameter parameter : parameters) {
                 operation.parameter(parameter);
@@ -560,9 +562,9 @@ public class PlayReader extends Reader {
         return operation;
     }
 
-    private List<Parameter> getParameters(Type type, List<Annotation> annotations) {
+    private List<Parameter> getParameters(Type type, List<Annotation> annotations, int position, Route route) {
 
-        // TODO possibly further improve to get parameter info from route if needed
+        // TODO support route multi parameter, body and query string
         final Iterator<SwaggerExtension> chain = SwaggerExtensions.chain();
         if (!chain.hasNext()) {
             return Collections.emptyList();
@@ -586,6 +588,28 @@ public class PlayReader extends Reader {
             final List<Parameter> body = new ArrayList<Parameter>();
             if (!typesToSkip.contains(type)) {
                 Parameter param = ParameterProcessor.applyAnnotations(getSwagger(), null, type, annotations);
+
+                // only if we have a class of param and it is unnamed (= 'body') get name from route
+                if (type instanceof JavaType && "body".equals(param.getName())){
+                    // get class of param
+                    String paramClassName = ((JavaType)type).getRawClass().getSimpleName();
+                    // get param from route at position position
+                    if (route.call().parameters().isDefined()) {
+                        //int size = route.call().parameters().get().size();
+                        play.modules.swagger.routes.Parameter p = null;
+                        try {
+                            p = route.call().parameters().get().take(position + 1).last();
+                            String routeParamClassName = p.typeName();
+                            // check if class of param is same as param from route
+                            if (routeParamClassName.equals(paramClassName)) {
+                                // add param name from route
+                                param.setName(p.name());
+                            }
+                        } catch (Exception e){
+                            Logger.debug("exception getting route param: " + e.getMessage());
+                        }
+                    }
+                }
                 if (param != null) {
                     body.add(param);
                 }
@@ -593,6 +617,7 @@ public class PlayReader extends Reader {
             return body;
         }
     }
+
 
     private void appendModels(Type type) {
         final Map<String, Model> models = ModelConverters.getInstance().readAll(type);
@@ -647,6 +672,17 @@ public class PlayReader extends Reader {
         } else {
             return clazz.getCanonicalName() + "." + method.getName();
         }
+    }
+
+    private String[] toArray(String csString){
+        if (StringUtils.isEmpty(csString)) return new String[] {csString};
+        int i = 0;
+        String[] result = csString.split(",");
+        for (String c: result){
+            result[i] = c.trim();
+            i++;
+        }
+        return result;
     }
 
     enum ContainerWrapper {

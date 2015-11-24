@@ -50,8 +50,11 @@ class SwaggerPluginImpl @Inject()(lifecycle: ApplicationLifecycle, router: Route
 
   val basePath = config.getString("swagger.api.basepath")
     .filter(path => !path.isEmpty)
-    .map(getPathUrl(_))
-    .getOrElse("http://localhost:9000")
+    .getOrElse("/")
+
+  val host = config.getString("swagger.api.host")
+    .filter(host => !host.isEmpty)
+    .getOrElse("localhost:9000")
 
   val title = config.getString("swagger.api.info.title") match {
     case None => ""
@@ -95,6 +98,7 @@ class SwaggerPluginImpl @Inject()(lifecycle: ApplicationLifecycle, router: Route
   swaggerConfig.contact = contact
   swaggerConfig.version = apiVersion
   swaggerConfig.title = title
+  swaggerConfig.host = host
   swaggerConfig.termsOfServiceUrl = termsOfServiceUrl
   swaggerConfig.license = license
   swaggerConfig.licenseUrl = licenseUrl
@@ -153,18 +157,6 @@ class SwaggerPluginImpl @Inject()(lifecycle: ApplicationLifecycle, router: Route
     logger.info("Swagger - stopped.")
 
     Future.successful(())
-  }
-
-  private def getPathUrl(path: String): String = {
-    try {
-      val basePathUrl = new URL(path)
-      logger.info(s"Basepath configured as:$path")
-      path
-    } catch {
-      case ex: Exception =>
-        logger.error(s"Misconfiguration - basepath not a valid URL:$path. Swagger abandoning initialisation!")
-        throw ex
-    }
   }
 
 }
