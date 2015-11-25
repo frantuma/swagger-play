@@ -3,77 +3,58 @@ package play.modules.swagger;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import io.swagger.annotations.*;
+import io.swagger.annotations.Info;
 import io.swagger.converter.ModelConverters;
-import io.swagger.jaxrs.Reader;
-import io.swagger.jaxrs.config.ReaderConfig;
-import io.swagger.jaxrs.utils.ReaderUtils;
 import io.swagger.models.*;
+import io.swagger.models.Contact;
+import io.swagger.models.ExternalDocs;
 import io.swagger.models.Tag;
 import io.swagger.models.parameters.*;
 import io.swagger.models.parameters.Parameter;
 import io.swagger.models.properties.*;
 import io.swagger.util.BaseReaderUtils;
 import io.swagger.util.ParameterProcessor;
-import io.swagger.util.PathUtils;
 import io.swagger.util.ReflectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import play.Logger;
 import play.modules.swagger.routes.*;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.Produces;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.*;
 
-public class PlayReader extends Reader {
+public class PlayReader {// extends Reader {
 
     private static final String SUCCESSFUL_OPERATION = "successful operation";
-    private static final String PATH_DELIMITER = "/";
 
+    private Swagger swagger;
+
+    public Swagger getSwagger() {
+        return swagger;
+    }
 
     public PlayReader(Swagger swagger) {
-        super(swagger);
+        this.swagger = swagger == null ? new Swagger() : swagger;
     }
 
-    public PlayReader(Swagger swagger, ReaderConfig config) {
-        super(swagger, config);
-    }
+    public Swagger read(Set<Class<?>> classes) {
 
-    private static Set<Scheme> parseSchemes(String schemes) {
-        final Set<Scheme> result = EnumSet.noneOf(Scheme.class);
-        for (String item : StringUtils.trimToEmpty(schemes).split(",")) {
-            final Scheme scheme = Scheme.forValue(StringUtils.trimToNull(item));
-            if (scheme != null) {
-                result.add(scheme);
+        // process SwaggerDefinitions first - so we get tags in desired order
+        for (Class<?> cls : classes) {
+            SwaggerDefinition swaggerDefinition = cls.getAnnotation(SwaggerDefinition.class);
+            if (swaggerDefinition != null) {
+                readSwaggerConfig(cls, swaggerDefinition);
             }
         }
-        return result;
-    }
 
-    private static boolean isVoid(Type type) {
-        final Class<?> cls = TypeFactory.defaultInstance().constructType(type).getRawClass();
-        return Void.class.isAssignableFrom(cls) || Void.TYPE.isAssignableFrom(cls);
-    }
-
-    private static boolean isValidResponse(Type type) {
-        if (type == null) {
-            return false;
+        for (Class<?> cls : classes) {
+            read(cls);
         }
-        final JavaType javaType = TypeFactory.defaultInstance().constructType(type);
-        if (isVoid(javaType)) {
-            return false;
-        }
-        final Class<?> cls = javaType.getRawClass();
-        return !javax.ws.rs.core.Response.class.isAssignableFrom(cls) && !isResourceClass(cls);
+
+        return swagger;
     }
 
-    private static boolean isResourceClass(Class<?> cls) {
-        return cls.getAnnotation(Api.class) != null;
-    }
-
-    @Override
     public Swagger read(Class<?> cls) {
         return read(cls, false);
     }
@@ -92,11 +73,9 @@ public class PlayReader extends Reader {
         String[] produces = new String[0];
         final Set<Scheme> globalSchemes = EnumSet.noneOf(Scheme.class);
 
-        // readable only if (api annotation and !api.hidden) or route or readHidden
-        //final boolean readable = (api != null && !api.hidden()) || readHidden || );
-        // if api annotation no route
-
         final boolean readable = (api != null && readHidden) || (api != null && !api.hidden());
+
+        // TODO possibly allow parsing also without @Api annotation
         if (readable) {
             // the value will be used as a tag for 2.0 UNLESS a Tags annotation is present
             Set<String> tagStrings = extractTags(api);
@@ -110,13 +89,9 @@ public class PlayReader extends Reader {
 
             if (!api.produces().isEmpty()) {
                 produces = toArray(api.produces());
-            } else if (cls.getAnnotation(Produces.class) != null) {
-                produces = ReaderUtils.splitContentValues(cls.getAnnotation(Produces.class).value());
             }
             if (!api.consumes().isEmpty()) {
                 consumes =  toArray(api.consumes());
-            } else if (cls.getAnnotation(Consumes.class) != null) {
-                consumes = ReaderUtils.splitContentValues(cls.getAnnotation(Consumes.class).value());
             }
             globalSchemes.addAll(parseSchemes(api.protocols()));
             Authorization[] authorizations = api.authorizations();
@@ -134,21 +109,13 @@ public class PlayReader extends Reader {
                     securities.add(security);
                 }
             }
-        }
-
-        // TODO possibly allow parsing also without @Api annotation
-        if (readable || (api == null && getConfig().isScanAllResources())) {
 
             // parse the method
-            // TODO get rid of javax.ws annotation checking
-            final javax.ws.rs.Path apiPath = ReflectionUtils.getAnnotation(cls, javax.ws.rs.Path.class);
             Method methods[] = cls.getMethods();
             for (Method method : methods) {
                 if (ReflectionUtils.isOverriddenMethod(method, cls)) {
                     continue;
                 }
-                javax.ws.rs.Path methodPath = ReflectionUtils.getAnnotation(method, javax.ws.rs.Path.class);
-
                 // complete name as stored in route
                 String fullMethodName = getFullMethodName(cls, method);
 
@@ -159,33 +126,17 @@ public class PlayReader extends Reader {
 
                 String operationPath = getPathFromRoute(route.path(), config.basePath);
 
-                Map<String, String> regexMap = new HashMap<>();
-
-                if (StringUtils.isEmpty(operationPath)) {
-                    operationPath = getPath(apiPath, methodPath);
-                    operationPath = PathUtils.parsePath(operationPath, regexMap);
-                }
-
                 if (operationPath != null) {
-                    if (isIgnored(operationPath)) {
-                        continue;
-                    }
                     final ApiOperation apiOperation = ReflectionUtils.getAnnotation(method, ApiOperation.class);
 
                     String httpMethod = extractOperationMethod(apiOperation, method, route);
                     Operation operation = null;
-                    if (apiOperation != null || getConfig().isScanAllResources() || httpMethod != null || methodPath != null) {
+                    if (apiOperation != null || httpMethod != null) {
                         operation = parseMethod(cls, method, route);
                     }
 
                     if (operation == null) {
                         continue;
-                    }
-                    for (Parameter param : operation.getParameters()) {
-                        if (regexMap.get(param.getName()) != null) {
-                            String pattern = regexMap.get(param.getName());
-                            param.setPattern(pattern);
-                        }
                     }
 
                     if (apiOperation != null) {
@@ -199,7 +150,6 @@ public class PlayReader extends Reader {
                             operation.scheme(scheme);
                         }
                     }
-
                     // can't continue without a valid http method
                     if (httpMethod != null) {
                         if (apiOperation != null) {
@@ -281,33 +231,123 @@ public class PlayReader extends Reader {
         return operationPath.toString();
     }
 
-    String getPath(javax.ws.rs.Path classLevelPath, javax.ws.rs.Path methodLevelPath) {
-        if (classLevelPath == null && methodLevelPath == null) {
-            return null;
+    protected void readSwaggerConfig(Class<?> cls, SwaggerDefinition config) {
+
+        if (!config.basePath().isEmpty()) {
+            swagger.setBasePath(config.basePath());
         }
-        StringBuilder b = new StringBuilder();
-        if (classLevelPath != null) {
-            b.append(classLevelPath.value());
+
+        if (!config.host().isEmpty()) {
+            swagger.setHost(config.host());
         }
-        if (methodLevelPath != null && !"/".equals(methodLevelPath.value())) {
-            String methodPath = methodLevelPath.value();
-            if (!methodPath.startsWith("/") && !b.toString().endsWith("/")) {
-                b.append("/");
+
+        readInfoConfig(config);
+
+        for (String consume : config.consumes()) {
+            if (StringUtils.isNotEmpty(consume)) {
+                swagger.addConsumes(consume);
             }
-            if (methodPath.endsWith("/")) {
-                methodPath = methodPath.substring(0, methodPath.length() - 1);
+        }
+
+        for (String produce : config.produces()) {
+            if (StringUtils.isNotEmpty(produce)) {
+                swagger.addProduces(produce);
             }
-            b.append(methodPath);
         }
-        String output = b.toString();
-        if (!output.startsWith("/")) {
-            output = "/" + output;
+
+        if (!config.externalDocs().value().isEmpty()) {
+            ExternalDocs externalDocs = swagger.getExternalDocs();
+            if (externalDocs == null) {
+                externalDocs = new ExternalDocs();
+                swagger.setExternalDocs(externalDocs);
+            }
+
+            externalDocs.setDescription(config.externalDocs().value());
+
+            if (!config.externalDocs().url().isEmpty()) {
+                externalDocs.setUrl(config.externalDocs().url());
+            }
         }
-        if (output.endsWith("/") && output.length() > 1) {
-            return output.substring(0, output.length() - 1);
-        } else {
-            return output;
+
+        for (io.swagger.annotations.Tag tagConfig : config.tags()) {
+            if (!tagConfig.name().isEmpty()) {
+                Tag tag = new Tag();
+                tag.setName(tagConfig.name());
+                tag.setDescription(tagConfig.description());
+
+                if (!tagConfig.externalDocs().value().isEmpty()) {
+                    tag.setExternalDocs(new ExternalDocs(tagConfig.externalDocs().value(),
+                            tagConfig.externalDocs().url()));
+                }
+
+                tag.getVendorExtensions().putAll(BaseReaderUtils.parseExtensions(tagConfig.extensions()));
+
+                swagger.addTag(tag);
+            }
         }
+
+        for (SwaggerDefinition.Scheme scheme : config.schemes()) {
+            if (scheme != SwaggerDefinition.Scheme.DEFAULT) {
+                swagger.addScheme(Scheme.forValue(scheme.name()));
+            }
+        }
+    }
+
+    protected void readInfoConfig(SwaggerDefinition config) {
+        Info infoConfig = config.info();
+        io.swagger.models.Info info = swagger.getInfo();
+        if (info == null) {
+            info = new io.swagger.models.Info();
+            swagger.setInfo(info);
+        }
+
+        if (!infoConfig.description().isEmpty()) {
+            info.setDescription(infoConfig.description());
+        }
+
+        if (!infoConfig.termsOfService().isEmpty()) {
+            info.setTermsOfService(infoConfig.termsOfService());
+        }
+
+        if (!infoConfig.title().isEmpty()) {
+            info.setTitle(infoConfig.title());
+        }
+
+        if (!infoConfig.version().isEmpty()) {
+            info.setVersion(infoConfig.version());
+        }
+
+        if (!infoConfig.contact().name().isEmpty()) {
+            Contact contact = info.getContact();
+            if (contact == null) {
+                contact = new Contact();
+                info.setContact(contact);
+            }
+
+            contact.setName(infoConfig.contact().name());
+            if (!infoConfig.contact().email().isEmpty()) {
+                contact.setEmail(infoConfig.contact().email());
+            }
+
+            if (!infoConfig.contact().url().isEmpty()) {
+                contact.setUrl(infoConfig.contact().url());
+            }
+        }
+
+        if (!infoConfig.license().name().isEmpty()) {
+            io.swagger.models.License license = info.getLicense();
+            if (license == null) {
+                license = new io.swagger.models.License();
+                info.setLicense(license);
+            }
+
+            license.setName(infoConfig.license().name());
+            if (!infoConfig.license().url().isEmpty()) {
+                license.setUrl(infoConfig.license().url());
+            }
+        }
+
+        info.getVendorExtensions().putAll(BaseReaderUtils.parseExtensions(infoConfig.extensions()));
     }
 
     private void readImplicitParameters(Method method, Operation operation) {
@@ -424,24 +464,6 @@ public class PlayReader extends Reader {
 
         operation.operationId(operationId);
 
-        if (apiOperation != null && apiOperation.consumes() != null && apiOperation.consumes().isEmpty()) {
-            final Consumes consumes = ReflectionUtils.getAnnotation(method, Consumes.class);
-            if (consumes != null) {
-                for (String mediaType : ReaderUtils.splitContentValues(consumes.value())) {
-                    operation.consumes(mediaType);
-                }
-            }
-        }
-
-        if (apiOperation != null && apiOperation.produces() != null && apiOperation.produces().isEmpty()) {
-            final Produces produces = ReflectionUtils.getAnnotation(method, Produces.class);
-            if (produces != null) {
-                for (String mediaType : ReaderUtils.splitContentValues(produces.value())) {
-                    operation.produces(mediaType);
-                }
-            }
-        }
-
         if (responseAnnotation != null) {
             for (ApiResponse apiResponse : responseAnnotation.value()) {
                 Map<String, Property> responseHeaders = parseResponseHeaders(apiResponse.responseHeaders());
@@ -553,23 +575,61 @@ public class PlayReader extends Reader {
 
             ParameterProcessor.applyAnnotations(getSwagger(), parameter, type, annotations);
 
-            if (parameter != null) {
-                parameters.add(parameter);
-            }
-
+            parameters.add(parameter);
         }
         return parameters;
     }
 
-    protected boolean shouldIgnoreType(Type type, Set<Type> typesToSkip) {
-        if (typesToSkip.contains(type)) {
-            return true;
+    private static Set<Scheme> parseSchemes(String schemes) {
+        final Set<Scheme> result = EnumSet.noneOf(Scheme.class);
+        for (String item : StringUtils.trimToEmpty(schemes).split(",")) {
+            final Scheme scheme = Scheme.forValue(StringUtils.trimToNull(item));
+            if (scheme != null) {
+                result.add(scheme);
+            }
         }
-        if (shouldIgnoreClass(constructType(type).getRawClass())) {
-            typesToSkip.add(type);
-            return true;
+        return result;
+    }
+
+    private static boolean isVoid(Type type) {
+        final Class<?> cls = TypeFactory.defaultInstance().constructType(type).getRawClass();
+        return Void.class.isAssignableFrom(cls) || Void.TYPE.isAssignableFrom(cls);
+    }
+
+    private static boolean isValidResponse(Type type) {
+        if (type == null) {
+            return false;
         }
-        return false;
+        final JavaType javaType = TypeFactory.defaultInstance().constructType(type);
+        if (isVoid(javaType)) {
+            return false;
+        }
+        final Class<?> cls = javaType.getRawClass();
+        return !isResourceClass(cls);
+    }
+
+    private static boolean isResourceClass(Class<?> cls) {
+        return cls.getAnnotation(Api.class) != null;
+    }
+
+    protected Set<String> extractTags(Api api) {
+        Set<String> output = new LinkedHashSet<>();
+
+        boolean hasExplicitTags = false;
+        for (String tag : api.tags()) {
+            if (!"".equals(tag)) {
+                hasExplicitTags = true;
+                output.add(tag);
+            }
+        }
+        if (!hasExplicitTags) {
+            // derive tag from api path + description
+            String tagString = api.value().replace("/", "");
+            if (!"".equals(tagString)) {
+                output.add(tagString);
+            }
+        }
+        return output;
     }
 
     private Property createProperty(Type type) {
@@ -589,14 +649,6 @@ public class PlayReader extends Reader {
             }
         }
         return in;
-    }
-
-    protected boolean shouldIgnoreClass(Class<?> cls) {
-        return false;
-    }
-
-    protected JavaType constructType(Type type) {
-        return TypeFactory.defaultInstance().constructType(type);
     }
 
     private void appendModels(Type type) {
@@ -634,17 +686,7 @@ public class PlayReader extends Reader {
         return responseHeaders;
     }
 
-    private boolean isIgnored(String path) {
-        for (String item : getConfig().getIgnoredRoutes()) {
-            final int length = item.length();
-            if (path.startsWith(item) && (path.length() == length || path.startsWith(PATH_DELIMITER, length))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private String getFullMethodName(Class clazz, Method method) {
+    public String getFullMethodName(Class clazz, Method method) {
 
         if (clazz.getCanonicalName().indexOf("$") == -1) {
             return clazz.getCanonicalName() + "$." + method.getName();
@@ -661,6 +703,11 @@ public class PlayReader extends Reader {
                 httpMethod = route.verb().toString().toLowerCase();
             } catch (Exception e) {
                 Logger.error("http method not found for method: " + method.getName(), e);
+            }
+        }
+        if (httpMethod == null){
+            if (!StringUtils.isEmpty(apiOperation.httpMethod())) {
+                httpMethod = apiOperation.httpMethod();
             }
         }
         return httpMethod;

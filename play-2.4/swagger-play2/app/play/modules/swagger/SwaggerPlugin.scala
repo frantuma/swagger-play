@@ -16,22 +16,15 @@
 
 package play.modules.swagger
 
-import java.net.URL
 import javax.inject.Inject
 import io.swagger.config.{FilterFactory, ScannerFactory, ConfigFactory}
-import io.swagger.util.Json
 import play.modules.swagger.util.SwaggerContext
 import io.swagger.core.filter.{SpecFilter, SwaggerSpecFilter}
-import io.swagger.model.ApiInfo
 import play.api.inject.ApplicationLifecycle
 import play.api.{Logger, Application}
 import play.api.routing.Router
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import io.swagger.jaxrs.ext.SwaggerExtensions
-import io.swagger.jaxrs.ext.SwaggerExtension
 import scala.collection.JavaConversions._
-import scala.collection.JavaConverters._
 import play.modules.swagger.routes.{Route=>PlayRoute,Parameter => PlayParameter}
 
 trait SwaggerPlugin

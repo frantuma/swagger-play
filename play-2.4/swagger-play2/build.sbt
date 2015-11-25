@@ -8,7 +8,7 @@ crossScalaVersions := Seq("2.11.6", "2.11.7")
 
 libraryDependencies ++= Seq(
   "org.slf4j"          % "slf4j-api"       % "1.6.4",
-  "io.swagger"         % "swagger-jaxrs"   % "1.5.4",
+  "io.swagger"         % "swagger-core"   % "1.5.4",
   "io.swagger" % "swagger-scala-module_2.11" % "1.0.0",
   "com.typesafe.play" %% "play-ebean"      % "2.0.0"            % "test",
   "org.specs2"        %% "specs2-core"     % "3.6"              % "test",

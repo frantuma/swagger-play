@@ -1,16 +1,8 @@
 package test.testdata
 
 import io.swagger.annotations._
-import io.swagger.util.Json
-
-import java.io.IOException
 
 import play.api.mvc.{Action, Controller}
-import play.Logger
-
-import play.api.libs.json.{Json, JsError}
-import javax.ws.rs.PathParam
-import scala.concurrent.Future
 
 @Api(value = "/apitest/cats", description = "play with cats")
 class CatController extends Controller {
@@ -45,7 +37,7 @@ class CatController extends Controller {
     @ApiResponses(Array(
       new ApiResponse(code = 405, message = "Invalid input"),
       new ApiResponse(code = 404, message = "Cat not found")))
-    def get1(@ApiParam(value = "ID of cat to fetch", required = true) @PathParam("catId") id: Long) = Action {
+    def get1(@ApiParam(value = "ID of cat to fetch", required = true) id: Long) = Action {
       request => Ok("test case")
     }
 

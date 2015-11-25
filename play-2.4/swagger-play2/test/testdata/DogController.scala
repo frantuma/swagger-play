@@ -10,13 +10,11 @@ import play.api.mvc.{Action, Controller}
 import play.Logger
 
 import play.api.libs.json.{Json, JsError}
-import javax.ws.rs.{Path, Produces, PathParam}
 
 import scala.concurrent.Future
 
 
 // todo - test for these
-@Path("user") // this will be the path to the doco
 @Api(value = "/apitest/dogs", description = "look after the dogs",
   basePath = "xx",
   position = 2,
@@ -106,7 +104,7 @@ object DogController extends Controller {
   @ApiResponses(Array(
     new ApiResponse(code = 405, message = "Invalid input"),
     new ApiResponse(code = 404, message = "Dog not found")))
-  def get1(@ApiParam(value = "ID of dog to fetch", required = true) @PathParam("dogId") id: Long) = Action {
+  def get1(@ApiParam(value = "ID of dog to fetch", required = true) id: Long) = Action {
     request => Ok("test case")
   }
 
@@ -118,7 +116,7 @@ object DogController extends Controller {
   @ApiResponses(Array(
     new ApiResponse(code = 405, message = "Invalid input"),
     new ApiResponse(code = 404, message = "Dog not found")))
-  def get2(@ApiParam(value = "ID of dog to fetch", required = true) @PathParam("dogId") id: Long) = Action {
+  def get2(@ApiParam(value = "ID of dog to fetch", required = true) id: Long) = Action {
     request => Ok("test case")
   }
 
@@ -130,7 +128,7 @@ object DogController extends Controller {
   @ApiResponses(Array(
     new ApiResponse(code = 405, message = "Invalid input"),
     new ApiResponse(code = 404, message = "Dog not found")))
-  def get3(@ApiParam(value = "ID of dog to fetch", required = true) @PathParam("dogId") id: Long) = Action {
+  def get3(@ApiParam(value = "ID of dog to fetch", required = true) id: Long) = Action {
     request => Ok("test case")
   }
 
@@ -167,7 +165,7 @@ object DogController extends Controller {
   // Delete a Dog
   @ApiOperation(value = "Delete", notes = "Deletes a user", httpMethod = "DELETE")
   def delete(
-              @ApiParam(name = "dogId", value = "dogId") @PathParam("dogId") userId: String)
+              @ApiParam(name = "dogId", value = "dogId") userId: String)
   = Action.async {
     implicit request => Future.successful(Ok)
   }

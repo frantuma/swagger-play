@@ -8,8 +8,6 @@ import org.specs2.mock.Mockito
 import scala.Some
 import play.api.Logger
 import io.swagger.util.Json
-import io.swagger.jaxrs.ext.SwaggerExtension
-import io.swagger.jaxrs.ext.SwaggerExtensions
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import play.modules.swagger.routes.{ Route => PlayRoute, Parameter => PlayParameter, DynamicPart, HandlerCall, HttpVerb, PathPattern }
