@@ -82,7 +82,8 @@ class SwaggerPluginImpl @Inject()(lifecycle: ApplicationLifecycle, router: Route
   }
 
   val licenseUrl = config.getString("swagger.api.info.licenseUrl") match {
-    case None => ""
+    // licenceUrl needs to be a valid URL to validate against schema
+    case None => "http://licenseUrl"
     case Some(value)=> value
   }
 
