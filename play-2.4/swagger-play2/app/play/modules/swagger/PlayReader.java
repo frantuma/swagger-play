@@ -80,20 +80,19 @@ public class PlayReader extends Reader {
 
     @Override
     public Swagger read(Class<?> cls) {
-        return read(cls, "", null, false, new String[0], new String[0], new HashMap<String, Tag>(), new ArrayList<Parameter>(), new HashSet<Class<?>>());
+        return read(cls, false);
     }
 
-    private Swagger read(Class<?> cls, String parentPath, String parentMethod, boolean readHidden, String[] parentConsumes, String[] parentProduces, Map<String, Tag> parentTags, List<Parameter> parentParameters, Set<Class<?>> scannedResources) {
+    private Swagger read(Class<?> cls, boolean readHidden) {
 
         RouteWrapper routes = RouteFactory.getRoute();
 
         PlaySwaggerConfig config = PlayConfigFactory.getConfig();
 
-        Api api = (Api) cls.getAnnotation(Api.class);
-        Map<String, SecurityScope> globalScopes = new HashMap<String, SecurityScope>();
+        Api api = cls.getAnnotation(Api.class);
 
-        Map<String, Tag> tags = new HashMap<String, Tag>();
-        List<SecurityRequirement> securities = new ArrayList<SecurityRequirement>();
+        Map<String, Tag> tags = new HashMap<>();
+        List<SecurityRequirement> securities = new ArrayList<>();
         String[] consumes = new String[0];
         String[] produces = new String[0];
         final Set<Scheme> globalSchemes = EnumSet.noneOf(Scheme.class);
@@ -109,9 +108,6 @@ public class PlayReader extends Reader {
             for (String tagString : tagStrings) {
                 Tag tag = new Tag().name(tagString);
                 tags.put(tagString, tag);
-            }
-            if (parentTags != null) {
-                tags.putAll(parentTags);
             }
             for (String tagName : tags.keySet()) {
                 getSwagger().tag(tags.get(tagName));
@@ -147,19 +143,6 @@ public class PlayReader extends Reader {
 
         // TODO possibly allow parsing also without @Api annotation by looking at routes
         if (readable || (api == null && getConfig().isScanAllResources())) {
-            // merge consumes, produces
-
-            // look for method-level annotated properties
-
-            // handle sub-resources by looking at return type
-
-            final List<Parameter> globalParameters = new ArrayList<Parameter>();
-
-            // look for constructor-level annotated properties
-            globalParameters.addAll(ReaderUtils.collectConstructorParameters(cls, getSwagger()));
-
-            // look for field-level annotated properties
-            globalParameters.addAll(ReaderUtils.collectFieldParameters(cls, getSwagger()));
 
             // parse the method
             // TODO get rid in case of javax.ws annotation checking
@@ -181,10 +164,10 @@ public class PlayReader extends Reader {
 
                 String operationPath = getPathFromRoute(route.path(), config.basePath);
 
-                Map<String, String> regexMap = new HashMap<String, String>();
+                Map<String, String> regexMap = new HashMap<>();
 
                 if (StringUtils.isEmpty(operationPath)) {
-                    operationPath = getPath(apiPath, methodPath, parentPath);
+                    operationPath = getPath(apiPath, methodPath);
                     operationPath = PathUtils.parsePath(operationPath, regexMap);
                 }
 
@@ -197,15 +180,10 @@ public class PlayReader extends Reader {
                     String httpMethod = extractOperationMethod(apiOperation, method, SwaggerExtensions.chain());
                     Operation operation = null;
                     if (apiOperation != null || getConfig().isScanAllResources() || httpMethod != null || methodPath != null) {
-                        operation = parseMethod(cls, method, globalParameters, route);
+                        operation = parseMethod(cls, method, route);
                     }
                     if (operation == null) {
                         continue;
-                    }
-                    if (parentParameters != null) {
-                        for (Parameter param : parentParameters) {
-                            operation.parameter(param);
-                        }
                     }
                     for (Parameter param : operation.getParameters()) {
                         if (regexMap.get(param.getName()) != null) {
@@ -226,36 +204,9 @@ public class PlayReader extends Reader {
                         }
                     }
 
-                    String[] apiConsumes = consumes;
-                    if (parentConsumes != null) {
-                        Set<String> both = new HashSet<String>(Arrays.asList(apiConsumes));
-                        both.addAll(new HashSet<String>(Arrays.asList(parentConsumes)));
-                        if (operation.getConsumes() != null) {
-                            both.addAll(new HashSet<String>(operation.getConsumes()));
-                        }
-                        apiConsumes = both.toArray(new String[both.size()]);
-                    }
-
-                    String[] apiProduces = produces;
-                    if (parentProduces != null) {
-                        Set<String> both = new HashSet<String>(Arrays.asList(apiProduces));
-                        both.addAll(new HashSet<String>(Arrays.asList(parentProduces)));
-                        if (operation.getProduces() != null) {
-                            both.addAll(new HashSet<String>(operation.getProduces()));
-                        }
-                        apiProduces = both.toArray(new String[both.size()]);
-                    }
-                    final Class<?> subResource = getSubResource(method);
-                    if (subResource != null && !scannedResources.contains(subResource)) {
-                        scannedResources.add(subResource);
-                        read(subResource, operationPath, httpMethod, true, apiConsumes, apiProduces, tags, operation.getParameters(), scannedResources);
-                    }
-
                     // can't continue without a valid http method
-                    httpMethod = httpMethod == null ? parentMethod : httpMethod;
                     if (httpMethod != null) {
                         if (apiOperation != null) {
-                            boolean hasExplicitTag = false;
                             for (String tag : apiOperation.tags()) {
                                 if (!"".equals(tag)) {
                                     operation.tag(tag);
@@ -263,44 +214,40 @@ public class PlayReader extends Reader {
                                 }
                             }
 
-                            if (operation != null) {
-                                operation.getVendorExtensions().putAll(BaseReaderUtils.parseExtensions(apiOperation.extensions()));
+                            operation.getVendorExtensions().putAll(BaseReaderUtils.parseExtensions(apiOperation.extensions()));
+                        }
+                        if (operation.getConsumes() == null) {
+                            for (String mediaType : consumes) {
+                                operation.consumes(mediaType);
                             }
                         }
-                        if (operation != null) {
-                            if (operation.getConsumes() == null) {
-                                for (String mediaType : apiConsumes) {
-                                    operation.consumes(mediaType);
-                                }
+                        if (operation.getProduces() == null) {
+                            for (String mediaType : produces) {
+                                operation.produces(mediaType);
                             }
-                            if (operation.getProduces() == null) {
-                                for (String mediaType : apiProduces) {
-                                    operation.produces(mediaType);
-                                }
-                            }
+                        }
 
-                            if (operation.getTags() == null) {
-                                for (String tagString : tags.keySet()) {
-                                    operation.tag(tagString);
-                                }
+                        if (operation.getTags() == null) {
+                            for (String tagString : tags.keySet()) {
+                                operation.tag(tagString);
                             }
-                            // Only add global @Api securities if operation doesn't already have more specific securities
-                            if (operation.getSecurity() == null) {
-                                for (SecurityRequirement security : securities) {
-                                    operation.security(security);
-                                }
+                        }
+                        // Only add global @Api securities if operation doesn't already have more specific securities
+                        if (operation.getSecurity() == null) {
+                            for (SecurityRequirement security : securities) {
+                                operation.security(security);
                             }
-                            Path path = getSwagger().getPath(operationPath);
-                            if (path == null) {
-                                path = new Path();
-                                getSwagger().path(operationPath, path);
-                            }
-                            path.set(httpMethod, operation);
-                            try {
-                                readImplicitParameters(method, operation);
-                            } catch (Exception e) {
-                                throw e;
-                            }
+                        }
+                        Path path = getSwagger().getPath(operationPath);
+                        if (path == null) {
+                            path = new Path();
+                            getSwagger().path(operationPath, path);
+                        }
+                        path.set(httpMethod, operation);
+                        try {
+                            readImplicitParameters(method, operation);
+                        } catch (Exception e) {
+                            throw e;
                         }
                     }
                 }
@@ -324,7 +271,11 @@ public class PlayReader extends Reader {
                 sb.append(((DynamicPart) part).name());
                 sb.append("}");
             } else {
-                sb.append(((StaticPart) part).value());
+                try {
+                    sb.append(((StaticPart) part).value());
+                } catch (ClassCastException e) {
+                    Logger.warn(String.format("ClassCastException parsing path from route: %s", e.getMessage()));
+                }
             }
         }
         StringBuilder operationPath = new StringBuilder();
@@ -334,21 +285,11 @@ public class PlayReader extends Reader {
         return operationPath.toString();
     }
 
-    String getPath(javax.ws.rs.Path classLevelPath, javax.ws.rs.Path methodLevelPath, String parentPath) {
-        if (classLevelPath == null && methodLevelPath == null && StringUtils.isEmpty(parentPath)) {
+    String getPath(javax.ws.rs.Path classLevelPath, javax.ws.rs.Path methodLevelPath) {
+        if (classLevelPath == null && methodLevelPath == null) {
             return null;
         }
         StringBuilder b = new StringBuilder();
-        if (parentPath != null && !"".equals(parentPath) && !"/".equals(parentPath)) {
-            if (!parentPath.startsWith("/")) {
-                parentPath = "/" + parentPath;
-            }
-            if (parentPath.endsWith("/")) {
-                parentPath = parentPath.substring(0, parentPath.length() - 1);
-            }
-
-            b.append(parentPath);
-        }
         if (classLevelPath != null) {
             b.append(classLevelPath.value());
         }
@@ -402,11 +343,10 @@ public class PlayReader extends Reader {
             return null;
         }
         final Type type = ReflectionUtils.typeFromString(param.dataType());
-        return ParameterProcessor.applyAnnotations(getSwagger(), p, type == null ? String.class : type,
-                Arrays.<Annotation>asList(param));
+        return ParameterProcessor.applyAnnotations(getSwagger(), p, type == null ? String.class : type, Collections.singletonList(param));
     }
 
-    private Operation parseMethod(Class<?> cls, Method method, List<Parameter> globalParameters, Route route) {
+    private Operation parseMethod(Class<?> cls, Method method, Route route) {
         Operation operation = new Operation();
 
         ApiOperation apiOperation = ReflectionUtils.getAnnotation(method, ApiOperation.class);
@@ -417,7 +357,7 @@ public class PlayReader extends Reader {
         String responseContainer = null;
 
         Type responseType = null;
-        Map<String, Property> defaultResponseHeaders = new HashMap<String, Property>();
+        Map<String, Property> defaultResponseHeaders = new HashMap<>();
 
         if (apiOperation != null) {
             if (apiOperation.hidden()) {
@@ -440,7 +380,7 @@ public class PlayReader extends Reader {
                 responseContainer = apiOperation.responseContainer();
             }
             if (apiOperation.authorizations() != null) {
-                List<SecurityRequirement> securities = new ArrayList<SecurityRequirement>();
+                List<SecurityRequirement> securities = new ArrayList<>();
                 for (Authorization auth : apiOperation.authorizations()) {
                     if (auth.value() != null && !"".equals(auth.value())) {
                         SecurityRequirement security = new SecurityRequirement();
@@ -455,9 +395,7 @@ public class PlayReader extends Reader {
                     }
                 }
                 if (securities.size() > 0) {
-                    for (SecurityRequirement sec : securities) {
-                        operation.security(sec);
-                    }
+                    securities.forEach(sec -> operation.security(sec));
                 }
             }
             if (apiOperation.consumes() != null && !apiOperation.consumes().isEmpty()) {
@@ -508,7 +446,6 @@ public class PlayReader extends Reader {
             }
         }
 
-        List<ApiResponse> apiResponses = new ArrayList<ApiResponse>();
         if (responseAnnotation != null) {
             for (ApiResponse apiResponse : responseAnnotation.value()) {
                 Map<String, Property> responseHeaders = parseResponseHeaders(apiResponse.responseHeaders());
@@ -539,20 +476,13 @@ public class PlayReader extends Reader {
             operation.setDeprecated(true);
         }
 
-        // process parameters
-        for (Parameter globalParameter : globalParameters) {
-            operation.parameter(globalParameter);
-        }
-
         Type[] genericParameterTypes = method.getGenericParameterTypes();
         Annotation[][] paramAnnotations = method.getParameterAnnotations();
         for (int i = 0; i < genericParameterTypes.length; i++) {
             final Type type = TypeFactory.defaultInstance().constructType(genericParameterTypes[i], cls);
             List<Parameter> parameters = getParameters(type, Arrays.asList(paramAnnotations[i]), i, route);
 
-            for (Parameter parameter : parameters) {
-                operation.parameter(parameter);
-            }
+            parameters.forEach(parameter -> operation.parameter(parameter));
         }
 
         if (operation.getResponses() == null) {
@@ -570,13 +500,13 @@ public class PlayReader extends Reader {
             return Collections.emptyList();
         }
         Logger.debug("getParameters for " + type);
-        Set<Type> typesToSkip = new HashSet<Type>();
+        Set<Type> typesToSkip = new HashSet<>();
         final SwaggerExtension extension = chain.next();
         Logger.debug("trying extension " + extension);
 
         final List<Parameter> parameters = extension.extractParameters(annotations, type, typesToSkip, chain);
         if (parameters.size() > 0) {
-            final List<Parameter> processed = new ArrayList<Parameter>(parameters.size());
+            final List<Parameter> processed = new ArrayList<>(parameters.size());
             for (Parameter parameter : parameters) {
                 if (ParameterProcessor.applyAnnotations(getSwagger(), parameter, type, annotations) != null) {
                     processed.add(parameter);
@@ -585,7 +515,7 @@ public class PlayReader extends Reader {
             return processed;
         } else {
             Logger.debug("no parameter found, looking at body params");
-            final List<Parameter> body = new ArrayList<Parameter>();
+            final List<Parameter> body = new ArrayList<>();
             if (!typesToSkip.contains(type)) {
                 Parameter param = ParameterProcessor.applyAnnotations(getSwagger(), null, type, annotations);
 
@@ -596,7 +526,7 @@ public class PlayReader extends Reader {
                     // get param from route at position position
                     if (route.call().parameters().isDefined()) {
                         //int size = route.call().parameters().get().size();
-                        play.modules.swagger.routes.Parameter p = null;
+                        play.modules.swagger.routes.Parameter p;
                         try {
                             p = route.call().parameters().get().take(position + 1).last();
                             String routeParamClassName = p.typeName();
@@ -633,7 +563,7 @@ public class PlayReader extends Reader {
                 String name = header.name();
                 if (!"".equals(name)) {
                     if (responseHeaders == null) {
-                        responseHeaders = new HashMap<String, Property>();
+                        responseHeaders = new HashMap<>();
                     }
                     String description = header.description();
                     Class<?> cls = header.response();

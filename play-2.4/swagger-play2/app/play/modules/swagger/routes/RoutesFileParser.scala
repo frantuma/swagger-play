@@ -31,7 +31,7 @@ object RoutesFileParser {
           case route: Route =>
             val newparts = StaticPart(prefix) +: route.path.parts
             val newPath = route.path.copy(parts = newparts)
-            Logger.debug("RoutesFileParser::parse - path: " + newPath.toString())
+            Logger.debug("newPath: " + newPath.toString())
             Right(List((prefix,route.copy(path = newPath))))
           case include:Include => // load include route
             Logger.debug(s"include router: ${include.router} prefix: ${include.prefix.toString()}")
