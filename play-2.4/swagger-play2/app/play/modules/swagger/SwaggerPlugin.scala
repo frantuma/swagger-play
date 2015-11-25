@@ -132,8 +132,6 @@ class SwaggerPluginImpl @Inject()(lifecycle: ApplicationLifecycle, router: Route
 
   val route = new RouteWrapper(routesRules)
   RouteFactory.setRoute(route)
-  val ext: SwaggerExtension = new PlaySwaggerExtension()
-  SwaggerExtensions.setExtensions(List(ext).asJava);
   app.configuration.getString("swagger.filter") match {
     case Some(e) if (e != "") => {
       try {

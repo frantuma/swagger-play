@@ -24,7 +24,7 @@ class PlayApiListingCacheSpec extends Specification with Mockito {
     ("GET", "/api/dog", "test.testdata.DogController.list"),
     ("PUT", "/api/dog", "test.testdata.DogController.add1"),
     ("GET", "/api/cat", "@test.testdata.CatController.list"),
-    ("GET", "/api/cat", "@test.testdata.CatController.add1"),
+    ("PUT", "/api/cat", "@test.testdata.CatController.add1"),
     ("GET", "/api/fly", "test.testdata.FlyController.list"),
     ("PUT", "/api/dog/:id", "test.testdata.DogController.add0(id:String)"))
   mockRoutes.documentation returns routesDocumentation
@@ -34,7 +34,7 @@ class PlayApiListingCacheSpec extends Specification with Mockito {
 GET /api/dog test.testdata.DogController.list
 PUT /api/dog test.testdata.DogController.add1
 GET /api/cat @test.testdata.CatController.list
-GET /api/cat @test.testdata.CatController.add1
+PUT /api/cat @test.testdata.CatController.add1
 GET /api/fly test.testdata.FlyController.list
 PUT /api/dog test.testdata.DogController.add1
 PUT /api/dog/:id test.testdata.DogController.add0(id:String)
@@ -75,8 +75,6 @@ PUT /api/dog/:id test.testdata.DogController.add0(id:String)
   ScannerFactory.setScanner(scanner)
   val route = new RouteWrapper(routesRules)
   RouteFactory.setRoute(route)
-  val ext: SwaggerExtension = new PlaySwaggerExtension()
-  SwaggerExtensions.setExtensions(List(ext).asJava);
 
   "ApiListingCache" should {
 
@@ -142,8 +140,8 @@ PUT /api/dog/:id test.testdata.DogController.add0(id:String)
       val opDogParamPut = pathDogParam.getOperationMap.get(HttpMethod.PUT)
       opDogParamPut.getOperationId must beEqualTo("add0")
       opDogParamPut.getParameters.head.getName must beEqualTo("id")
-      opDogParamPut.getParameters.head.getIn must beEqualTo("body")
-      opDogParamPut.getParameters.head.asInstanceOf[BodyParameter].getSchema.asInstanceOf[ModelImpl].getType must beEqualTo("string")
+      opDogParamPut.getParameters.head.getIn must beEqualTo("path")
+      opDogParamPut.getParameters.head.asInstanceOf[PathParameter].getType must beEqualTo("string")
       opDogParamPut.getConsumes.asScala.toList must beEqualTo(List("application/json","application/xml"))
       opDogParamPut.getProduces.asScala.toList must beEqualTo(List("application/json","application/xml"))
       opDogParamPut.getResponses.get("200").getSchema.asInstanceOf[RefProperty].getSimpleRef must beEqualTo("ActionAnyContent")

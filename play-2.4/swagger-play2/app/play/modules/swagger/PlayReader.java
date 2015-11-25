@@ -6,17 +6,12 @@ import io.swagger.annotations.*;
 import io.swagger.converter.ModelConverters;
 import io.swagger.jaxrs.Reader;
 import io.swagger.jaxrs.config.ReaderConfig;
-import io.swagger.jaxrs.ext.SwaggerExtension;
-import io.swagger.jaxrs.ext.SwaggerExtensions;
 import io.swagger.jaxrs.utils.ReaderUtils;
 import io.swagger.models.*;
 import io.swagger.models.Tag;
 import io.swagger.models.parameters.*;
 import io.swagger.models.parameters.Parameter;
-import io.swagger.models.properties.ArrayProperty;
-import io.swagger.models.properties.MapProperty;
-import io.swagger.models.properties.Property;
-import io.swagger.models.properties.RefProperty;
+import io.swagger.models.properties.*;
 import io.swagger.util.BaseReaderUtils;
 import io.swagger.util.ParameterProcessor;
 import io.swagger.util.PathUtils;
@@ -141,11 +136,11 @@ public class PlayReader extends Reader {
             }
         }
 
-        // TODO possibly allow parsing also without @Api annotation by looking at routes
+        // TODO possibly allow parsing also without @Api annotation
         if (readable || (api == null && getConfig().isScanAllResources())) {
 
             // parse the method
-            // TODO get rid in case of javax.ws annotation checking
+            // TODO get rid of javax.ws annotation checking
             final javax.ws.rs.Path apiPath = ReflectionUtils.getAnnotation(cls, javax.ws.rs.Path.class);
             Method methods[] = cls.getMethods();
             for (Method method : methods) {
@@ -176,12 +171,13 @@ public class PlayReader extends Reader {
                         continue;
                     }
                     final ApiOperation apiOperation = ReflectionUtils.getAnnotation(method, ApiOperation.class);
-                    // TODO here it uses Extension chain mechanism from swagger-jaxrs, move here
-                    String httpMethod = extractOperationMethod(apiOperation, method, SwaggerExtensions.chain());
+
+                    String httpMethod = extractOperationMethod(apiOperation, method, route);
                     Operation operation = null;
                     if (apiOperation != null || getConfig().isScanAllResources() || httpMethod != null || methodPath != null) {
                         operation = parseMethod(cls, method, route);
                     }
+
                     if (operation == null) {
                         continue;
                     }
@@ -476,14 +472,10 @@ public class PlayReader extends Reader {
             operation.setDeprecated(true);
         }
 
-        Type[] genericParameterTypes = method.getGenericParameterTypes();
-        Annotation[][] paramAnnotations = method.getParameterAnnotations();
-        for (int i = 0; i < genericParameterTypes.length; i++) {
-            final Type type = TypeFactory.defaultInstance().constructType(genericParameterTypes[i], cls);
-            List<Parameter> parameters = getParameters(type, Arrays.asList(paramAnnotations[i]), i, route);
 
-            parameters.forEach(parameter -> operation.parameter(parameter));
-        }
+        List<Parameter> parameters = getParameters(cls, method, route);
+
+        parameters.forEach(parameter -> operation.parameter(parameter));
 
         if (operation.getResponses() == null) {
             Response response = new Response().description(SUCCESSFUL_OPERATION);
@@ -492,62 +484,120 @@ public class PlayReader extends Reader {
         return operation;
     }
 
-    private List<Parameter> getParameters(Type type, List<Annotation> annotations, int position, Route route) {
-
-        // TODO support route multi parameter, body and query string
-        final Iterator<SwaggerExtension> chain = SwaggerExtensions.chain();
-        if (!chain.hasNext()) {
-            return Collections.emptyList();
-        }
-        Logger.debug("getParameters for " + type);
-        Set<Type> typesToSkip = new HashSet<>();
-        final SwaggerExtension extension = chain.next();
-        Logger.debug("trying extension " + extension);
-
-        final List<Parameter> parameters = extension.extractParameters(annotations, type, typesToSkip, chain);
-        if (parameters.size() > 0) {
-            final List<Parameter> processed = new ArrayList<>(parameters.size());
-            for (Parameter parameter : parameters) {
-                if (ParameterProcessor.applyAnnotations(getSwagger(), parameter, type, annotations) != null) {
-                    processed.add(parameter);
-                }
+    private Type getParamType(Class<?> cls, Method method, String simpleTypeName) {
+        Type[] genericParameterTypes = method.getGenericParameterTypes();
+        for (int i = 0; i < genericParameterTypes.length; i++) {
+            final Type type = TypeFactory.defaultInstance().constructType(genericParameterTypes[i], cls);
+            String paramClassName = ((JavaType)type).getRawClass().getSimpleName();
+            if (simpleTypeName.equals(paramClassName)) {
+                return type;
             }
-            return processed;
-        } else {
-            Logger.debug("no parameter found, looking at body params");
-            final List<Parameter> body = new ArrayList<>();
-            if (!typesToSkip.contains(type)) {
-                Parameter param = ParameterProcessor.applyAnnotations(getSwagger(), null, type, annotations);
-
-                // only if we have a class of param and it is unnamed (= 'body') get name from route
-                if (type instanceof JavaType && "body".equals(param.getName())){
-                    // get class of param
-                    String paramClassName = ((JavaType)type).getRawClass().getSimpleName();
-                    // get param from route at position position
-                    if (route.call().parameters().isDefined()) {
-                        //int size = route.call().parameters().get().size();
-                        play.modules.swagger.routes.Parameter p;
-                        try {
-                            p = route.call().parameters().get().take(position + 1).last();
-                            String routeParamClassName = p.typeName();
-                            // check if class of param is same as param from route
-                            if (routeParamClassName.equals(paramClassName)) {
-                                // add param name from route
-                                param.setName(p.name());
-                            }
-                        } catch (Exception e){
-                            Logger.debug("exception getting route param: " + e.getMessage());
-                        }
-                    }
-                }
-                if (param != null) {
-                    body.add(param);
-                }
-            }
-            return body;
         }
+        return null;
     }
 
+    private List<Annotation> getParamAnnotations(Class<?> cls, Method method, String simpleTypeName) {
+        Type[] genericParameterTypes = method.getGenericParameterTypes();
+        Annotation[][] paramAnnotations = method.getParameterAnnotations();
+        for (int i = 0; i < genericParameterTypes.length; i++) {
+            final Type type = TypeFactory.defaultInstance().constructType(genericParameterTypes[i], cls);
+            String paramClassName = ((JavaType)type).getRawClass().getSimpleName();
+            if (simpleTypeName.equals(paramClassName)) {
+                return Arrays.asList(paramAnnotations[i]);
+            }
+        }
+        return null;
+    }
+
+    private List<Parameter> getParameters(Class<?> cls, Method method, Route route) {
+        // TODO now consider only parameters defined in route, excluding body parameters
+        // understand how to possibly infer body/form params e.g. from @BodyParser or other annotation
+
+        List<Parameter> parameters = new ArrayList<>();
+        if (!route.call().parameters().isDefined()) {
+            return parameters;
+        }
+        scala.collection.Iterator<play.modules.swagger.routes.Parameter> iter  = route.call().parameters().get().iterator();
+
+        while (iter.hasNext()) {
+            play.modules.swagger.routes.Parameter p = iter.next();
+            if (!p.fixed().isEmpty()) continue;
+            Parameter parameter;
+            String def = null;
+
+            Logger.warn("TODO CHECK ME CANNOT READ DEFAULT FROM SCALA (reserved word?)");
+            // TODO CANNOT READ DEFAULT FROM SCALA
+/*
+            if (p._default().isDefined()) {
+                def = p._default().get();
+                if (def.startsWith("\"") && def.endsWith("\"")){
+                    def = def.substring(1,def.length()-1);
+                }
+            }
+*/
+            Type type = getParamType(cls, method, p.typeName());
+            Property schema = createProperty(type);
+            if (route.path().has(p.name())) {
+                // it's a path param
+                parameter = new PathParameter();
+                if (def != null) ((PathParameter)parameter).setDefaultValue(def);
+                if (schema != null) ((PathParameter)parameter).setProperty(schema);
+            } else {
+                // it's a query string param
+                parameter = new QueryParameter();
+                if (def != null) ((QueryParameter)parameter).setDefaultValue(def);
+                if (schema != null) ((QueryParameter)parameter).setProperty(schema);
+            }
+            parameter.setName(p.name());
+            List<Annotation> annotations = getParamAnnotations(cls, method, p.typeName());
+
+            ParameterProcessor.applyAnnotations(getSwagger(), parameter, type, annotations);
+
+            if (parameter != null) {
+                parameters.add(parameter);
+            }
+
+        }
+        return parameters;
+    }
+
+    protected boolean shouldIgnoreType(Type type, Set<Type> typesToSkip) {
+        if (typesToSkip.contains(type)) {
+            return true;
+        }
+        if (shouldIgnoreClass(constructType(type).getRawClass())) {
+            typesToSkip.add(type);
+            return true;
+        }
+        return false;
+    }
+
+    private Property createProperty(Type type) {
+        return enforcePrimitive(ModelConverters.getInstance().readAsProperty(type), 0);
+    }
+
+    private Property enforcePrimitive(Property in, int level) {
+        if (in instanceof RefProperty) {
+            return new StringProperty();
+        }
+        if (in instanceof ArrayProperty) {
+            if (level == 0) {
+                final ArrayProperty array = (ArrayProperty) in;
+                array.setItems(enforcePrimitive(array.getItems(), level + 1));
+            } else {
+                return new StringProperty();
+            }
+        }
+        return in;
+    }
+
+    protected boolean shouldIgnoreClass(Class<?> cls) {
+        return false;
+    }
+
+    protected JavaType constructType(Type type) {
+        return TypeFactory.defaultInstance().constructType(type);
+    }
 
     private void appendModels(Type type) {
         final Map<String, Model> models = ModelConverters.getInstance().readAll(type);
@@ -594,7 +644,6 @@ public class PlayReader extends Reader {
         return false;
     }
 
-    // TODO move in utils
     private String getFullMethodName(Class clazz, Method method) {
 
         if (clazz.getCanonicalName().indexOf("$") == -1) {
@@ -602,6 +651,19 @@ public class PlayReader extends Reader {
         } else {
             return clazz.getCanonicalName() + "." + method.getName();
         }
+    }
+
+    public String extractOperationMethod(ApiOperation apiOperation,
+                                         Method method, Route route) {
+        String httpMethod = null;
+        if (route != null) {
+            try {
+                httpMethod = route.verb().toString().toLowerCase();
+            } catch (Exception e) {
+                Logger.error("http method not found for method: " + method.getName(), e);
+            }
+        }
+        return httpMethod;
     }
 
     private String[] toArray(String csString){
