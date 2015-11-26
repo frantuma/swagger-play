@@ -99,13 +99,6 @@ class SwaggerPluginImpl @Inject()(lifecycle: ApplicationLifecycle, router: Route
 
   PlayConfigFactory.setConfig(swaggerConfig)
 
-  /*
-  val routes ={
-      play.modules.swagger.routes.RoutesFileParser.parse(app.classloader,"routes","").right.get.collect {
-        case (prefix, route: PlayRoute) => (prefix,route)
-      }
-    }.toMap
-*/
   val routes ={
     play.modules.swagger.routes.RoutesFileParser.parse(app.classloader,"routes","").right.get.collect {
       case (prefix, route: PlayRoute) => {

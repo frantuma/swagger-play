@@ -2,15 +2,7 @@ package test.testdata
 
 
 import io.swagger.annotations._
-import io.swagger.util.Json
-
-import java.io.IOException
-
 import play.api.mvc.{Action, Controller}
-import play.Logger
-
-import play.api.libs.json.{Json, JsError}
-
 import scala.concurrent.Future
 
 

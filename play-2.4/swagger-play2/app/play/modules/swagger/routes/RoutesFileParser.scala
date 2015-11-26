@@ -122,7 +122,7 @@ object RoutesFileParser {
        route.path.parts.collect {
          case part @ DynamicPart(name, regex, _) => {
            route.call.parameters.getOrElse(Nil).find(_.name == name).map { p =>
-             if (p.fixed.isDefined || p.default.isDefined) {
+             if (p.fixed.isDefined || p.defaultValue.isDefined) {
                errors += RoutesCompilationError(
                  file,
                  "It is not allowed to specify a fixed or default value for parameter: '" + name + "' extracted from the path",

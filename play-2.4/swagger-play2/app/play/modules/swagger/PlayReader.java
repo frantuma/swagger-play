@@ -24,7 +24,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.*;
 
-public class PlayReader {// extends Reader {
+public class PlayReader {
 
     private static final String SUCCESSFUL_OPERATION = "successful operation";
 
@@ -212,7 +212,6 @@ public class PlayReader {// extends Reader {
             if (part instanceof StaticPart) {
                 sb.append(((StaticPart) part).value());
             } else if (part instanceof DynamicPart) {
-                // TODO is there any swagger-io mean to handle dynamic part?
                 sb.append("{");
                 sb.append(((DynamicPart) part).name());
                 sb.append("}");
@@ -375,7 +374,7 @@ public class PlayReader {// extends Reader {
         } else if (param.paramType().equalsIgnoreCase("header")) {
             p = new HeaderParameter();
         } else {
-            //LOGGER.warn("Unkown implicit parameter type: [" + param.paramType() + "]");
+            Logger.warn("Unkown implicit parameter type: [" + param.paramType() + "]");
             return null;
         }
         final Type type = ReflectionUtils.typeFromString(param.dataType());
@@ -448,7 +447,6 @@ public class PlayReader {// extends Reader {
             operation.addResponse(String.valueOf(apiOperation.code()), response);
         } else if (responseType == null) {
             // pick out response from method declaration
-            //LOGGER.debug("picking up response class from method " + method);
             responseType = method.getGenericReturnType();
         }
         if (isValidResponse(responseType)) {
@@ -547,16 +545,12 @@ public class PlayReader {// extends Reader {
             Parameter parameter;
             String def = null;
 
-            Logger.warn("TODO CHECK ME CANNOT READ DEFAULT FROM SCALA (reserved word?)");
-            // TODO CANNOT READ DEFAULT FROM SCALA
-/*
-            if (p._default().isDefined()) {
-                def = p._default().get();
+            if (p.defaultValue().isDefined()) {
+                def = p.defaultValue().get();
                 if (def.startsWith("\"") && def.endsWith("\"")){
                     def = def.substring(1,def.length()-1);
                 }
             }
-*/
             Type type = getParamType(cls, method, p.typeName());
             Property schema = createProperty(type);
             if (route.path().has(p.name())) {

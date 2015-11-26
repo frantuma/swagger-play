@@ -2,13 +2,8 @@ import testdata._
 
 import io.swagger.converter._
 
-import play.modules.swagger._
-
 import org.specs2.mutable._
 import org.specs2.mock.Mockito
-
-
-import org.mockito.Mockito._
 
 class EBeanModelTest extends Specification with Mockito {
   "ModelConverters" should {

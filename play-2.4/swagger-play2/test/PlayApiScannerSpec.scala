@@ -1,11 +1,7 @@
 import play.modules.swagger._
 import org.specs2.mutable._
 import org.specs2.mock.Mockito
-import test.testdata.DogController
-import io.swagger.config.SwaggerConfig
-import org.mockito.Mockito._
 import scala.collection.JavaConversions._
-import scala.collection.JavaConverters._
 import play.modules.swagger.util.SwaggerContext
 
 class PlayApiScannerSpec extends Specification with Mockito {

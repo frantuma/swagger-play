@@ -106,7 +106,6 @@ class ApiHelpController extends SwaggerBaseApiController {
 }
 
 class SwaggerBaseApiController extends Controller {
-  //protected def jaxbContext = JAXBContext.newInstance(classOf[String], classOf[ResourceListing])
 
   protected def returnXml(request: Request[_]) = request.path.contains(".xml")
 
@@ -121,7 +120,6 @@ class SwaggerBaseApiController extends Controller {
     val queryParams = (for((key, value) <- requestHeader.queryString) yield {
       (key, value.toList.asJava)
     }).toMap
-    //val aaa = queryParams.asJava
     val cookies = (for(cookie <- requestHeader.cookies) yield {
       (cookie.name, cookie.value)
     }).toMap
@@ -130,10 +128,8 @@ class SwaggerBaseApiController extends Controller {
     }).toMap
 
     val f = new SpecFilter
-    //f.filter(arg0, arg1, arg2, arg3, arg4)
     val l: Option[Swagger] = ApiListingCache.listing(docRoot)
 
-    //val specs = l.
     val specs: Swagger = l match {
       case Some(m) => m
       case _ => new Swagger()
@@ -178,7 +174,6 @@ class SwaggerBaseApiController extends Controller {
       data.asInstanceOf[String]
     } else {
       val stringWriter = new StringWriter()
-      //jaxbContext.createMarshaller().marshal(data, stringWriter)
       stringWriter.toString
     }
   }
@@ -200,7 +195,6 @@ class SwaggerBaseApiController extends Controller {
     if (data.getClass.equals(classOf[String])) {
       data.asInstanceOf[String]
     } else {
-      //Json.prettyPrint(data.asInstanceOf[AnyRef])
       Json.pretty(data.asInstanceOf[AnyRef])
     }
   }

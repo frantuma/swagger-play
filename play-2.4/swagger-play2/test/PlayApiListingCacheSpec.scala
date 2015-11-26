@@ -1,4 +1,4 @@
-import io.swagger.config.{ ScannerFactory, SwaggerConfig, ConfigFactory }
+import io.swagger.config.{ ScannerFactory }
 import io.swagger.models.{ModelImpl, HttpMethod}
 import io.swagger.models.parameters.{BodyParameter, PathParameter}
 import io.swagger.models.properties.{RefProperty, ArrayProperty}
@@ -10,9 +10,7 @@ import play.api.Logger
 import io.swagger.util.Json
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-import play.modules.swagger.routes.{ Route => PlayRoute, Parameter => PlayParameter, DynamicPart, HandlerCall, HttpVerb, PathPattern }
-
-import play.modules.swagger.routes.Route
+import play.modules.swagger.routes.{ Route => PlayRoute }
 
 class PlayApiListingCacheSpec extends Specification with Mockito {
 
@@ -160,8 +158,6 @@ PUT /api/dog/:id test.testdata.DogController.add0(id:String)
     if (data.getClass.equals(classOf[String])) {
       data.asInstanceOf[String]
     } else {
-      //Json.prettyPrint(data.asInstanceOf[AnyRef])      
-      Json.pretty(data.asInstanceOf[AnyRef])
     }
   }
 }
