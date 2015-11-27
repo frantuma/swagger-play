@@ -25,7 +25,7 @@ You can depend on pre-built libraries in maven central by adding the following d
 
 ```
 libraryDependencies ++= Seq(
-  "com.wordnik" %% "swagger-play2" % "1.3.13"
+  "io.swagger" %% "swagger-play2" % "1.3.13"
 )
 ```
 

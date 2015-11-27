@@ -31,7 +31,7 @@ object RoutesFileParser {
           case route: Route =>
             val newparts = StaticPart(prefix) +: route.path.parts
             val newPath = route.path.copy(parts = newparts)
-            Logger.error(newPath.toString())
+            Logger.debug("newPath: " + newPath.toString())
             Right(List((prefix,route.copy(path = newPath))))
           case include:Include => // load include route
             Logger.debug(s"include router: ${include.router} prefix: ${include.prefix.toString()}")
@@ -51,8 +51,26 @@ object RoutesFileParser {
     }
   }
 
-  def parse(routesContent: String): Either[Seq[RoutesCompilationError], List[Rule]] = {
-    parseContent(routesContent, new File("nofile"))
+  def parse(routesContent: String, prefix: String): Either[Seq[RoutesCompilationError], List[(String,Rule)]] = {
+    parseContent(routesContent, new File("nofile")) match {
+        case Right(rules) =>
+        val eithers: List[Either[Seq[RoutesCompilationError], List[(String,Rule)]]] = rules.map {
+          case route: Route =>
+            val newparts = StaticPart(prefix) +: route.path.parts
+            val newPath = route.path.copy(parts = newparts)
+            Right(List((prefix,route.copy(path = newPath))))
+        }
+
+        val (errors,newrules) = eithers.partition( _.isLeft)
+
+        if (errors.nonEmpty){
+          errors.head
+        }else{
+          Right(newrules.flatMap(_.right.get))
+        }
+
+      case Left(error) => Left(error)
+    }
   }
 
   /**
@@ -64,7 +82,6 @@ object RoutesFileParser {
     */
    def parseContent(routesContent: String, routesFile: File): Either[Seq[RoutesCompilationError], List[Rule]] = {
      val parser = new RoutesFileParser()
-
      parser.parse(routesContent) match {
        case parser.Success(parsed: List[Rule], _) =>
          validate(routesFile, parsed.collect { case r: Route => r }) match {
@@ -105,7 +122,7 @@ object RoutesFileParser {
        route.path.parts.collect {
          case part @ DynamicPart(name, regex, _) => {
            route.call.parameters.getOrElse(Nil).find(_.name == name).map { p =>
-             if (p.fixed.isDefined || p.default.isDefined) {
+             if (p.fixed.isDefined || p.defaultValue.isDefined) {
                errors += RoutesCompilationError(
                  file,
                  "It is not allowed to specify a fixed or default value for parameter: '" + name + "' extracted from the path",
